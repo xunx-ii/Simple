@@ -231,7 +231,7 @@ void ASimpleCharacterBase::Input_LookMouse(const FInputActionValue& InputActionV
 
 	if (Value.X != 0.0f)
 	{
-		AddControllerYawInput(-Value.X);
+		AddControllerYawInput(Value.X);
 	}
 
 	if (Value.Y != 0.0f)
