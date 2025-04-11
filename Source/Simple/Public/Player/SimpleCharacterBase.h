@@ -19,7 +19,7 @@ class ASimpleCharacterBase : public ACharacter, public IAbilitySystemInterface
 
 public:
 	// Sets default values for this character's properties
-	ASimpleCharacterBase();
+	ASimpleCharacterBase(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	UFUNCTION(BlueprintCallable, Category = "Simple|Character")
 	USimpleAbilitySystemComponent* GetSimpleAbilitySystemComponent() const { return AbilitySystemComponent; }

@@ -10,15 +10,31 @@
 #include "UserSettings/EnhancedInputUserSettings.h"
 #include "InputMappingContext.h"
 #include "SimpleGameplayTags.h"
+#include "Player/SimpleCharacterMovementComponent.h"
 
 
-ASimpleCharacterBase::ASimpleCharacterBase()
+ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<USimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	SetReplicates(true);
 
-	
+	USimpleCharacterMovementComponent* SimpleCharacterMovementComponent = CastChecked<USimpleCharacterMovementComponent>(GetCharacterMovement());
+	SimpleCharacterMovementComponent->GravityScale = 1.0f;
+	SimpleCharacterMovementComponent->MaxAcceleration = 2400.0f;
+	SimpleCharacterMovementComponent->BrakingFrictionFactor = 1.0f;
+	SimpleCharacterMovementComponent->BrakingFriction = 6.0f;
+	SimpleCharacterMovementComponent->GroundFriction = 8.0f;
+	SimpleCharacterMovementComponent->BrakingDecelerationWalking = 1400.0f;
+	SimpleCharacterMovementComponent->bUseControllerDesiredRotation = false;
+	SimpleCharacterMovementComponent->bOrientRotationToMovement = false;
+	SimpleCharacterMovementComponent->RotationRate = FRotator(0.0f, 720.0f, 0.0f);
+	SimpleCharacterMovementComponent->bAllowPhysicsRotationDuringAnimRootMotion = false;
+	SimpleCharacterMovementComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
+	SimpleCharacterMovementComponent->bCanWalkOffLedgesWhenCrouching = true;
+	SimpleCharacterMovementComponent->SetCrouchedHalfHeight(65.0f);
+
+	SetReplicates(true);
 
 	AbilitySystemComponent = nullptr;
 }
