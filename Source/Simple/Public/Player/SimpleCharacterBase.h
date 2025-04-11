@@ -10,6 +10,9 @@
 struct FGameplayTag;
 struct FInputActionValue;
 
+class USimplePawnData;
+class USimpleCameraMode;
+class USimpleCameraComponent;
 class USimpleAbilitySystemComponent;
 
 UCLASS()
@@ -34,6 +37,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	TSubclassOf<USimpleCameraMode> DetermineCameraMode() const;
+
 	UPROPERTY(Transient)
 	TObjectPtr<USimpleAbilitySystemComponent> AbilitySystemComponent;
 
@@ -54,6 +59,10 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	
-	
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Character", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USimpleCameraComponent> SimpleCameraComponent;
+
+	UPROPERTY()
+	const USimplePawnData* PawnData;
 };

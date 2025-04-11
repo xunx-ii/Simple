@@ -58,8 +58,8 @@ void USimpleAbilitySystemComponent::ProcessAbilityInput(float DeltaTime, bool bG
 		{
 			if (AbilitySpec->Ability && !AbilitySpec->IsActive())
 			{
-				const USimpleGameplayAbility* LyraAbilityCDO = Cast<USimpleGameplayAbility>(AbilitySpec->Ability);
-				if (LyraAbilityCDO && LyraAbilityCDO->GetActivationPolicy() == ESimpleAbilityActivationPolicy::WhileInputActive)
+				const USimpleGameplayAbility* SimpleAbilityCDO = Cast<USimpleGameplayAbility>(AbilitySpec->Ability);
+				if (SimpleAbilityCDO && SimpleAbilityCDO->GetActivationPolicy() == ESimpleAbilityActivationPolicy::WhileInputActive)
 				{
 					AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
 				}
@@ -85,9 +85,9 @@ void USimpleAbilitySystemComponent::ProcessAbilityInput(float DeltaTime, bool bG
 				}
 				else
 				{
-					const USimpleGameplayAbility* LyraAbilityCDO = Cast<USimpleGameplayAbility>(AbilitySpec->Ability);
+					const USimpleGameplayAbility* SimpleAbilityCDO = Cast<USimpleGameplayAbility>(AbilitySpec->Ability);
 
-					if (LyraAbilityCDO && LyraAbilityCDO->GetActivationPolicy() == ESimpleAbilityActivationPolicy::OnInputTriggered)
+					if (SimpleAbilityCDO && SimpleAbilityCDO->GetActivationPolicy() == ESimpleAbilityActivationPolicy::OnInputTriggered)
 					{
 						AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
 					}

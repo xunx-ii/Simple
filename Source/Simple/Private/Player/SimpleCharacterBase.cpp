@@ -13,6 +13,7 @@
 #include "Player/SimpleCharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Camera/SimpleCameraComponent.h"
 
 
 ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectInitializer)
@@ -44,6 +45,9 @@ ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectIniti
 	SimpleCharacterMovementComponent->bCanWalkOffLedgesWhenCrouching = true;
 	SimpleCharacterMovementComponent->SetCrouchedHalfHeight(65.0f);
 
+	SimpleCameraComponent = CreateDefaultSubobject<USimpleCameraComponent>(TEXT("SimpleCameraComponent"));
+	SimpleCameraComponent->SetRelativeLocation(FVector(-300.0f, 0.0f, 75.0f));
+
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
@@ -54,6 +58,7 @@ ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectIniti
 	SetReplicates(true);
 
 	AbilitySystemComponent = nullptr;
+	PawnData = nullptr;
 }
 
 
@@ -274,7 +279,10 @@ void ASimpleCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	{
 		SimplePlayerState->CallOrRegister_OnPawnDataLoaded(FOnSimplePawnDataLoaded::FDelegate::CreateLambda([this, PlayerInputComponent](const USimplePawnData* PawnData)
 			{
+				this->PawnData = PawnData;
+
 				this->InitializePlayerInput(PlayerInputComponent);
+				this->SimpleCameraComponent->DetermineCameraModeDelegate.BindUObject(this, &ThisClass::DetermineCameraMode);
 			}));
 	}
 	else 
@@ -283,3 +291,12 @@ void ASimpleCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	}
 }
 
+TSubclassOf<USimpleCameraMode> ASimpleCharacterBase::DetermineCameraMode() const
+{
+	if (PawnData)
+	{
+		return PawnData->DefaultCameraMode;
+	}
+
+	return nullptr;
+}

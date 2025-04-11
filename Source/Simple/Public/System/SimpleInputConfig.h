@@ -49,10 +49,10 @@ class SIMPLE_API USimpleInputConfig : public UDataAsset
 {
 	GENERATED_BODY()
 public:
-	UFUNCTION(BlueprintCallable, Category = "Lyra|Pawn")
+	UFUNCTION(BlueprintCallable, Category = "Simple|Pawn")
 	const UInputAction* FindNativeInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = true) const;
 
-	UFUNCTION(BlueprintCallable, Category = "Lyra|Pawn")
+	UFUNCTION(BlueprintCallable, Category = "Simple|Pawn")
 	const UInputAction* FindAbilityInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = true) const;
 
 public:

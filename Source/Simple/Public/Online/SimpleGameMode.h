@@ -21,7 +21,7 @@ public:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 	virtual void InitGameState() override;
 
-	UFUNCTION(BlueprintCallable, Category = "Lyra|Pawn")
+	UFUNCTION(BlueprintCallable, Category = "Simple|Pawn")
 	const USimplePawnData* GetPawnDataForController(const AController* InController) const;
 protected:
 	void OnExperienceLoaded(const USimpleExperienceDefinition* CurrentExperience);

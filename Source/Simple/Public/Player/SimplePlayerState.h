@@ -48,6 +48,6 @@ protected:
 private:
 	bool bPawnDataIsLoaded;
 	
-	UPROPERTY(VisibleAnywhere, Category = "Lyra|PlayerState")
+	UPROPERTY(VisibleAnywhere, Category = "Simple|PlayerState")
 	TObjectPtr<USimpleAbilitySystemComponent> AbilitySystemComponent;
 };

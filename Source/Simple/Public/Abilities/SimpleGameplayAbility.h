@@ -26,6 +26,6 @@ public:
 	ESimpleAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|Ability Activation")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Ability Activation")
 	ESimpleAbilityActivationPolicy ActivationPolicy;
 };

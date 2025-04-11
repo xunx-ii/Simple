@@ -8,6 +8,7 @@
 
 class USimpleAbilitySet;
 class USimpleInputConfig;
+class USimpleCameraMode;
 
 UCLASS()
 class SIMPLE_API USimplePawnData : public UPrimaryDataAsset
@@ -23,4 +24,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Input")
 	TObjectPtr<USimpleInputConfig> InputConfig;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|Camera")
+	TSubclassOf<USimpleCameraMode> DefaultCameraMode;
 };

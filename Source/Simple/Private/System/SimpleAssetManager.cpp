@@ -17,7 +17,7 @@ USimpleAssetManager& USimpleAssetManager::Get()
 		return *Singleton;
 	}
 
-	UE_LOG(LogClass, Fatal, TEXT("Invalid AssetManagerClassName in DefaultEngine.ini.  It must be set to LyraAssetManager!"));
+	UE_LOG(LogClass, Fatal, TEXT("Invalid AssetManagerClassName in DefaultEngine.ini.  It must be set to SimpleAssetManager!"));
 
 	return *NewObject<USimpleAssetManager>();
 }
