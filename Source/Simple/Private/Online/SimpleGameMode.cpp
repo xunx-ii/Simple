@@ -28,6 +28,24 @@ void ASimpleGameMode::InitGame(const FString& MapName, const FString& Options, F
 }
 
 
+void ASimpleGameMode::InitGameState()
+{
+	Super::InitGameState();
+
+	ASimpleGameState* SimpleGameState = Cast<ASimpleGameState>(GameState);
+
+	SimpleGameState->CallOrRegister_OnExperienceLoaded(FOnSimpleExperienceLoaded::FDelegate::CreateUObject(this, &ThisClass::OnExperienceLoaded));
+}
+
+void ASimpleGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	ASimpleGameState* SimpleGameState = Cast<ASimpleGameState>(GameState);
+	if (SimpleGameState->IsExperienceLoaded())
+	{
+		Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+	}
+}
+
 UClass* ASimpleGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
 {
 	if (const USimplePawnData* PawnData = GetPawnDataForController(InController))
@@ -69,6 +87,22 @@ const USimplePawnData* ASimpleGameMode::GetPawnDataForController(const AControll
 	}
 
 	return nullptr;
+}
+
+
+void ASimpleGameMode::OnExperienceLoaded(const USimpleExperienceDefinition* CurrentExperience)
+{
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PC = Cast<APlayerController>(*Iterator);
+		if ((PC != nullptr) && (PC->GetPawn() == nullptr))
+		{
+			if (PlayerCanRestart(PC))
+			{
+				RestartPlayer(PC);
+			}
+		}
+	}
 }
 
 void ASimpleGameMode::HandleMatchAssignmentIfNotExpectingOne()

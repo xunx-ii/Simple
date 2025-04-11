@@ -44,7 +44,6 @@ void ASimplePlayerState::PostInitializeComponents()
 
 void ASimplePlayerState::SetPawnData(const USimplePawnData* PawnData)
 {
-
 	if (GetLocalRole() != ROLE_Authority)
 	{
 		return;

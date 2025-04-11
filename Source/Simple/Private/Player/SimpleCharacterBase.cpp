@@ -11,13 +11,23 @@
 #include "InputMappingContext.h"
 #include "SimpleGameplayTags.h"
 #include "Player/SimpleCharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 
 
 ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<USimpleCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
+	SetNetCullDistanceSquared(900000000.0f);
+
+	UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
+	CapsuleComp->InitCapsuleSize(40.0f, 90.0f);
+
+	USkeletalMeshComponent* SkeletalMeshComponent = GetMesh();
+	SkeletalMeshComponent->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 
 	USimpleCharacterMovementComponent* SimpleCharacterMovementComponent = CastChecked<USimpleCharacterMovementComponent>(GetCharacterMovement());
 	SimpleCharacterMovementComponent->GravityScale = 1.0f;
@@ -33,6 +43,13 @@ ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectIniti
 	SimpleCharacterMovementComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
 	SimpleCharacterMovementComponent->bCanWalkOffLedgesWhenCrouching = true;
 	SimpleCharacterMovementComponent->SetCrouchedHalfHeight(65.0f);
+
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = false;
+
+	BaseEyeHeight = 80.0f;
+	CrouchedEyeHeight = 50.0f;
 
 	SetReplicates(true);
 
