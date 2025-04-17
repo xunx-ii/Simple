@@ -110,6 +110,9 @@ void ASimplePlayerState::OnExperienceLoaded(const USimpleExperienceDefinition* C
 void ASimplePlayerState::OnRep_GamePawnData()
 {
 	bPawnDataIsLoaded = true;
+
+	OnPawnDataLoaded.Broadcast(GamePawnData);
+	OnPawnDataLoaded.Clear();
 }
 
 void ASimplePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

@@ -51,6 +51,7 @@ public:
 	// Gets the tag associated with the top layer and the blend weight of it
 	void GetBlendInfo(float& OutWeightOfTopLayer, FGameplayTag& OutTagOfTopLayer) const;
 
+	void SetupDefaultCameraMode();
 protected:
 
 	virtual void OnRegister() override;
@@ -58,6 +59,7 @@ protected:
 
 	virtual void UpdateCameraModes();
 
+	TSubclassOf<USimpleCameraMode> DetermineCameraMode() const;
 protected:
 
 	// Stack used to blend the camera modes.
@@ -67,4 +69,6 @@ protected:
 	// Offset applied to the field of view.  The offset is only for one frame, it gets cleared once it is applied.
 	float FieldOfViewOffset;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Camera")
+	TSubclassOf<USimpleCameraMode> DefaultCameraMode;
 };

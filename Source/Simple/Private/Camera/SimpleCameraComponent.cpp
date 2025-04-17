@@ -98,6 +98,11 @@ void USimpleCameraComponent::UpdateCameraModes()
 	}
 }
 
+TSubclassOf<USimpleCameraMode> USimpleCameraComponent::DetermineCameraMode() const
+{
+	return DefaultCameraMode;
+}
+
 void USimpleCameraComponent::DrawDebug(UCanvas* Canvas) const
 {
 	check(Canvas);
@@ -123,4 +128,8 @@ void USimpleCameraComponent::GetBlendInfo(float& OutWeightOfTopLayer, FGameplayT
 	CameraModeStack->GetBlendInfo(/*out*/ OutWeightOfTopLayer, /*out*/ OutTagOfTopLayer);
 }
 
+void USimpleCameraComponent::SetupDefaultCameraMode()
+{
+	DetermineCameraModeDelegate.BindUObject(this, &ThisClass::DetermineCameraMode);
+}
 

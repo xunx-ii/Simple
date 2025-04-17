@@ -14,6 +14,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/SimpleCameraComponent.h"
+#include "Component/SimpleInputComponent.h"
 
 
 ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectInitializer)
@@ -45,20 +46,13 @@ ASimpleCharacterBase::ASimpleCharacterBase(const FObjectInitializer& ObjectIniti
 	SimpleCharacterMovementComponent->bCanWalkOffLedgesWhenCrouching = true;
 	SimpleCharacterMovementComponent->SetCrouchedHalfHeight(65.0f);
 
-	SimpleCameraComponent = CreateDefaultSubobject<USimpleCameraComponent>(TEXT("SimpleCameraComponent"));
-	SimpleCameraComponent->SetRelativeLocation(FVector(-300.0f, 0.0f, 75.0f));
-
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
 
-	BaseEyeHeight = 80.0f;
-	CrouchedEyeHeight = 50.0f;
-
 	SetReplicates(true);
 
 	AbilitySystemComponent = nullptr;
-	PawnData = nullptr;
 }
 
 
@@ -91,14 +85,6 @@ void ASimpleCharacterBase::OnRep_PlayerState()
 	}
 }
 
-
-void ASimpleCharacterBase::BeginPlay()
-{
-	Super::BeginPlay();
-
-	
-}
-
 void ASimpleCharacterBase::UninitializeAbilitySystem()
 {
 	if (!AbilitySystemComponent)
@@ -122,61 +108,6 @@ void ASimpleCharacterBase::UninitializeAbilitySystem()
 	}
 
 	AbilitySystemComponent = nullptr;
-}
-
-
-void ASimpleCharacterBase::InitializePlayerInput(class UInputComponent* PlayerInputComponent)
-{
-	if (ASimplePlayerController* SimplePlayerController = GetController<ASimplePlayerController>())
-	{
-		if (ULocalPlayer* LocalPlayer = SimplePlayerController->GetLocalPlayer())
-		{
-			USimpleEnhancedInputComponent* SimpleEnhancedInputComponent = Cast<USimpleEnhancedInputComponent>(PlayerInputComponent);
-			if (SimpleEnhancedInputComponent)
-			{
-				UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-				Subsystem->ClearAllMappings();
-
-				if (ASimplePlayerState* SimplePlayerState = GetPlayerState<ASimplePlayerState>())
-				{
-					const USimplePawnData* SimplePawnData = SimplePlayerState->GetPawnData<USimplePawnData>();
-					if (SimplePawnData)
-					{
-						USimpleInputConfig* SimpleInputConfig = SimplePawnData->InputConfig;
-						if (SimpleInputConfig)
-						{
-							for (const FInputMappingContextAndPriority& Mapping : SimpleInputConfig->DefaultInputMappings)
-							{
-								if (UInputMappingContext* IMC = Mapping.InputMapping.Get())
-								{
-									if (Mapping.bRegisterWithSettings)
-									{
-										if (UEnhancedInputUserSettings* Settings = Subsystem->GetUserSettings())
-										{
-											Settings->RegisterInputMappingContext(IMC);
-										}
-
-										FModifyContextOptions Options = {};
-										Options.bIgnoreAllPressedKeysUntilRelease = false;					
-										Subsystem->AddMappingContext(IMC, Mapping.Priority, Options);
-									}
-								}
-							}
-
-							if (SimpleEnhancedInputComponent)
-							{
-								TArray<uint32> BindHandles;
-								SimpleEnhancedInputComponent->BindAbilityActions(SimpleInputConfig, this, &ThisClass::Input_AbilityInputTagPressed, &ThisClass::Input_AbilityInputTagReleased, /*out*/ BindHandles);
-
-								SimpleEnhancedInputComponent->BindNativeAction(SimpleInputConfig, SimpleGameplayTags::InputTag_Move, ETriggerEvent::Triggered, this, &ThisClass::Input_Move, /*bLogIfNotFound=*/ false);
-								SimpleEnhancedInputComponent->BindNativeAction(SimpleInputConfig, SimpleGameplayTags::InputTag_Look_Mouse, ETriggerEvent::Triggered, this, &ThisClass::Input_LookMouse, /*bLogIfNotFound=*/ false);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 }
 
 void ASimpleCharacterBase::InitializeAbilitySystem(USimpleAbilitySystemComponent* InSimpleAbilitySystemComponent, AActor* InOwnerActor)
@@ -207,96 +138,11 @@ void ASimpleCharacterBase::InitializeAbilitySystem(USimpleAbilitySystemComponent
 
 	AbilitySystemComponent = InSimpleAbilitySystemComponent;
 	AbilitySystemComponent->InitAbilityActorInfo(InOwnerActor, this);
+
+	OnInitializedAbilitySystem();
 }
 
-void ASimpleCharacterBase::Input_Move(const FInputActionValue& InputActionValue)
+void ASimpleCharacterBase::OnInitializedAbilitySystem()
 {
-	if (Controller)
-	{
-		const FVector2D Value = InputActionValue.Get<FVector2D>();
-		const FRotator MovementRotation(0.0f, Controller->GetControlRotation().Yaw, 0.0f);
-
-		if (Value.X != 0.0f)
-		{
-			const FVector MovementDirection = MovementRotation.RotateVector(FVector::RightVector);
-			AddMovementInput(MovementDirection, Value.X);
-		}
-
-		if (Value.Y != 0.0f)
-		{
-			const FVector MovementDirection = MovementRotation.RotateVector(FVector::ForwardVector);
-			AddMovementInput(MovementDirection, Value.Y);
-		}
-	}
-}
-
-void ASimpleCharacterBase::Input_LookMouse(const FInputActionValue& InputActionValue)
-{
-	const FVector2D Value = InputActionValue.Get<FVector2D>();
-
-	if (Value.X != 0.0f)
-	{
-		AddControllerYawInput(Value.X);
-	}
-
-	if (Value.Y != 0.0f)
-	{
-		AddControllerPitchInput(Value.Y);
-	}
-}
-
-void ASimpleCharacterBase::Input_AbilityInputTagPressed(FGameplayTag InputTag)
-{
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->AbilityInputTagPressed(InputTag);
-	}
-}
-
-
-void ASimpleCharacterBase::Input_AbilityInputTagReleased(FGameplayTag InputTag)
-{
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->AbilityInputTagReleased(InputTag);
-	}
-}
-
-// Called every frame
-void ASimpleCharacterBase::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
-// Called to bind functionality to input
-void ASimpleCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	ASimplePlayerState* SimplePlayerState = GetPlayerState<ASimplePlayerState>();
-	if (SimplePlayerState)
-	{
-		SimplePlayerState->CallOrRegister_OnPawnDataLoaded(FOnSimplePawnDataLoaded::FDelegate::CreateLambda([this, PlayerInputComponent](const USimplePawnData* PawnData)
-			{
-				this->PawnData = PawnData;
-
-				this->InitializePlayerInput(PlayerInputComponent);
-				this->SimpleCameraComponent->DetermineCameraModeDelegate.BindUObject(this, &ThisClass::DetermineCameraMode);
-			}));
-	}
-	else 
-	{
-		UE_LOG(LogClass, Error, TEXT("ASimpleCharacterBase::SetupPlayerInputComponent ASimplePlayerState is nullptr!!!!!"));
-	}
-}
-
-TSubclassOf<USimpleCameraMode> ASimpleCharacterBase::DetermineCameraMode() const
-{
-	if (PawnData)
-	{
-		return PawnData->DefaultCameraMode;
-	}
-
-	return nullptr;
+	K2_OnInitializedAbilitySystem(AbilitySystemComponent);
 }

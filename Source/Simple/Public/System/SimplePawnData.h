@@ -21,10 +21,4 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Abilities")
 	TArray<TObjectPtr<USimpleAbilitySet>> AbilitySets;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Input")
-	TObjectPtr<USimpleInputConfig> InputConfig;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lyra|Camera")
-	TSubclassOf<USimpleCameraMode> DefaultCameraMode;
 };
