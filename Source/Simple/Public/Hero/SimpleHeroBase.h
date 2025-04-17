@@ -6,9 +6,10 @@
 #include "Player/SimpleCharacterBase.h"
 #include "SimpleHeroBase.generated.h"
 
-/**
- * 
- */
+class USimpleCameraComponent;
+class USimpleInputComponent;
+class USimpleHealthComponent;
+
 UCLASS()
 class SIMPLE_API ASimpleHeroBase : public ASimpleCharacterBase
 {
@@ -30,4 +31,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Character", Meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USimpleInputComponent> SimpleInputComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Lyra|Character", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USimpleHealthComponent> SimpleHealthComponent;
 };

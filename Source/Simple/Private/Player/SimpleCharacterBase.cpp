@@ -146,3 +146,56 @@ void ASimpleCharacterBase::OnInitializedAbilitySystem()
 {
 	K2_OnInitializedAbilitySystem(AbilitySystemComponent);
 }
+
+void ASimpleCharacterBase::OnDeathStarted(AActor* OwningActor)
+{
+	DisableMovementAndCollision();
+}
+
+void ASimpleCharacterBase::OnDeathFinished(AActor* OwningActor)
+{
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::DestroyDueToDeath);
+}
+
+void ASimpleCharacterBase::DisableMovementAndCollision()
+{
+	if (Controller)
+	{
+		Controller->SetIgnoreMoveInput(true);
+	}
+
+	UCapsuleComponent* CapsuleComp = GetCapsuleComponent();
+	check(CapsuleComp);
+	CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CapsuleComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	USimpleCharacterMovementComponent* SimpleCharacterMovementComponent = CastChecked<USimpleCharacterMovementComponent>(GetCharacterMovement());
+	SimpleCharacterMovementComponent->StopMovementImmediately();
+	SimpleCharacterMovementComponent->DisableMovement();
+}
+
+void ASimpleCharacterBase::DestroyDueToDeath()
+{
+	K2_OnDeathFinished();
+
+	UninitAndDestroy();
+}
+
+void ASimpleCharacterBase::UninitAndDestroy()
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		DetachFromControllerPendingDestroy();
+		SetLifeSpan(0.1f);
+	}
+
+	if (USimpleAbilitySystemComponent* SimpleAbilitySystemComponent = GetSimpleAbilitySystemComponent())
+	{
+		if (SimpleAbilitySystemComponent->GetAvatarActor() == this)
+		{
+			UninitializeAbilitySystem();
+		}
+	}
+
+	SetActorHiddenInGame(true);
+}

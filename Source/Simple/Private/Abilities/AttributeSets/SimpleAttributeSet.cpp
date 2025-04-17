@@ -2,7 +2,14 @@
 
 
 #include "Abilities/AttributeSets/SimpleAttributeSet.h"
+#include "Abilities/SimpleAbilitySystemComponent.h"
 
+USimpleAttributeSet::USimpleAttributeSet()
+{
 
+}
 
-
+USimpleAbilitySystemComponent* USimpleAttributeSet::GetSimpleAbilitySystemComponent() const
+{
+	return Cast<USimpleAbilitySystemComponent>(GetOwningAbilitySystemComponent());
+}

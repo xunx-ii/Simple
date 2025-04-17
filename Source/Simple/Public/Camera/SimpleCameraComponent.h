@@ -37,6 +37,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Simple|Camera")
 	static USimpleCameraComponent* FindCameraComponent(const AActor* Actor) { return (Actor ? Actor->FindComponentByClass<USimpleCameraComponent>() : nullptr); }
 
+	UFUNCTION(BlueprintCallable, Category = "Simple|Camera")
+	void SetAbilityCameraMode(TSubclassOf<USimpleCameraMode> NewAbilityCameraMode);
+
+	UFUNCTION(BlueprintCallable, Category = "Simple|Camera")
+	void ClearAbilityCameraMode();
+
 	// Returns the target actor that the camera is looking at.
 	virtual AActor* GetTargetActor() const { return GetOwner(); }
 
@@ -71,4 +77,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Simple|Camera")
 	TSubclassOf<USimpleCameraMode> DefaultCameraMode;
+
+private:
+	UPROPERTY()
+	TSubclassOf<USimpleCameraMode> AbilityCameraMode;
 };

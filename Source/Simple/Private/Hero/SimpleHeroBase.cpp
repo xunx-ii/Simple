@@ -4,6 +4,7 @@
 #include "Hero/SimpleHeroBase.h"
 #include "Camera/SimpleCameraComponent.h"
 #include "Component/SimpleInputComponent.h"
+#include "Component/SimpleHealthComponent.h"
 
 ASimpleHeroBase::ASimpleHeroBase(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -12,6 +13,10 @@ ASimpleHeroBase::ASimpleHeroBase(const FObjectInitializer& ObjectInitializer)
 	SimpleCameraComponent->SetRelativeLocation(FVector(-300.0f, 0.0f, 75.0f));
 
 	SimpleInputComponent = CreateDefaultSubobject<USimpleInputComponent>(TEXT("SimpleInputComponent"));
+
+	SimpleHealthComponent = CreateDefaultSubobject<USimpleHealthComponent>(TEXT("HealthComponent"));
+	SimpleHealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
+	SimpleHealthComponent->OnDeathFinished.AddDynamic(this, &ThisClass::OnDeathFinished);
 
 	BaseEyeHeight = 80.0f;
 	CrouchedEyeHeight = 50.0f;

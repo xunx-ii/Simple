@@ -9,5 +9,9 @@ namespace SimpleGameplayTags
 	SIMPLE_API	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Move);
 	SIMPLE_API	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputTag_Look_Mouse);
 
+	SIMPLE_API	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Death);
+	SIMPLE_API	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Death_Dying);
+	SIMPLE_API	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Death_Dead);
+
 	SIMPLE_API FGameplayTag FindTagByString(const FString& TagString, bool bMatchPartialString = false);
 };

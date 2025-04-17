@@ -12,8 +12,6 @@ struct FInputActionValue;
 
 class USimplePawnData;
 class USimpleCameraMode;
-class USimpleCameraComponent;
-class USimpleInputComponent;
 class USimpleAbilitySystemComponent;
 
 UCLASS()
@@ -36,14 +34,30 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Simple")
 	void K2_OnInitializedAbilitySystem(USimpleAbilitySystemComponent* SimpleAbilitySystemComponent);
-protected:
 
-	UPROPERTY(Transient)
-	TObjectPtr<USimpleAbilitySystemComponent> AbilitySystemComponent;
+protected:
 
 	void UninitializeAbilitySystem();
 
 	void InitializeAbilitySystem(USimpleAbilitySystemComponent* InSimpleAbilitySystemComponent, AActor* InOwnerActor);
 
 	virtual void OnInitializedAbilitySystem();
+
+	UFUNCTION()
+	virtual void OnDeathStarted(AActor* OwningActor);
+
+	UFUNCTION()
+	virtual void OnDeathFinished(AActor* OwningActor);
+
+	UFUNCTION(BlueprintImplementableEvent, meta=(DisplayName="OnDeathFinished"))
+	void K2_OnDeathFinished();
+
+	void DisableMovementAndCollision();
+	void DestroyDueToDeath();
+	void UninitAndDestroy();
+
+protected:
+
+	UPROPERTY(Transient)
+	TObjectPtr<USimpleAbilitySystemComponent> AbilitySystemComponent;
 };

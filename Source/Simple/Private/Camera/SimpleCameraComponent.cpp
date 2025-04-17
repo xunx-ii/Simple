@@ -10,12 +10,24 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SimpleCameraComponent)
 
-
 USimpleCameraComponent::USimpleCameraComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	CameraModeStack = nullptr;
 	FieldOfViewOffset = 0.0f;
+}
+
+void USimpleCameraComponent::SetAbilityCameraMode(TSubclassOf<USimpleCameraMode> NewAbilityCameraMode)
+{
+	if (NewAbilityCameraMode)
+	{
+		AbilityCameraMode = NewAbilityCameraMode;
+	}
+}
+
+void USimpleCameraComponent::ClearAbilityCameraMode()
+{
+	AbilityCameraMode = nullptr;
 }
 
 void USimpleCameraComponent::OnRegister()
@@ -100,6 +112,11 @@ void USimpleCameraComponent::UpdateCameraModes()
 
 TSubclassOf<USimpleCameraMode> USimpleCameraComponent::DetermineCameraMode() const
 {
+	if (AbilityCameraMode)
+	{
+		return AbilityCameraMode;
+	}
+
 	return DefaultCameraMode;
 }
 
