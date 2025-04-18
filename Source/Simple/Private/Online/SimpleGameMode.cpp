@@ -10,6 +10,7 @@
 #include "System/SimpleExperienceDefinition.h"
 #include "Player/SimplePlayerController.h"
 #include "Player/SimpleCharacterBase.h"
+#include "UI/SimpleHUD.h"
 
 ASimpleGameMode::ASimpleGameMode()
 {
@@ -17,7 +18,7 @@ ASimpleGameMode::ASimpleGameMode()
 	PlayerControllerClass = ASimplePlayerController::StaticClass();
 	PlayerStateClass = ASimplePlayerState::StaticClass();
 	DefaultPawnClass = ASimpleCharacterBase::StaticClass();
-
+	HUDClass = ASimpleHUD::StaticClass();
 }
 
 void ASimpleGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)

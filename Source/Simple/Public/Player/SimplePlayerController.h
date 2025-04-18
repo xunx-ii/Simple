@@ -17,6 +17,7 @@ class SIMPLE_API ASimplePlayerController : public APlayerController
 public:
 	ASimplePlayerController();
 
+	virtual void ReceivedPlayer() override;
 	virtual void PostProcessInput(const float DeltaTime, const bool bGamePaused) override;
 	
 };
