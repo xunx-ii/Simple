@@ -139,29 +139,38 @@ bool USimpleGameInstance::RemoveLocalPlayer(ULocalPlayer* ExistingPlayer)
 	return Super::RemoveLocalPlayer(ExistingPlayer);
 }
 
-void USimpleGameInstance::PrimaryLayoutAddWidgets(AHUD* HUD)
+USimplePrimaryLayout* USimpleGameInstance::GetPrimaryLayout(USimpleLocalPlayer* LocalPlayer)
 {
-	if (!HUD->GetOwningPlayerController())
-	{
-		return;
-	}
-	
-	if (ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(HUD->GetOwningPlayerController()->Player))
-	{
-		for (const FSimpleGameWidgetRequest& Entry : SimpleGameWidgets)
-		{
-			if (FRootViewportLayoutInfo* LayoutInfo = RootViewportLayouts.FindByKey(LocalPlayer))
-			{
-				if (TSubclassOf<UCommonActivatableWidget> ConcreteWidgetClass = Entry.SimpleGameWidgetClass.Get())
-				{
-					if (!ensure(LocalPlayer) || !ensure(ConcreteWidgetClass != nullptr))
-					{
-						return;
-					}
+	const FRootViewportLayoutInfo* LayoutInfo = RootViewportLayouts.FindByKey(LocalPlayer);
+	return LayoutInfo ? LayoutInfo->RootLayout : nullptr;
+}
 
-					LayoutInfo->RootLayout->PushWidgetToLayerStack(Entry.LayerID, ConcreteWidgetClass);
-				}
+bool USimpleGameInstance::PushWidgetToLayerStackOfGamePlayTag(FSimpleGameWidgetRequest SimpleGameWidgetRequest)
+{
+	if (!PrimaryPlayer.IsValid())
+	{
+		return false;
+	}
+
+	ULocalPlayer* LocalPlayer = PrimaryPlayer.Get();
+
+	if (!LocalPlayer)
+	{
+		return false;
+	}
+
+	if (FRootViewportLayoutInfo* LayoutInfo = RootViewportLayouts.FindByKey(LocalPlayer))
+	{
+		if (TSubclassOf<UCommonActivatableWidget> ConcreteWidgetClass = SimpleGameWidgetRequest.SimpleGameWidgetClass.Get())
+		{
+			if (ConcreteWidgetClass == nullptr)
+			{
+				return false;
 			}
+
+			LayoutInfo->RootLayout->PushWidgetToLayerStack(SimpleGameWidgetRequest.LayerID, ConcreteWidgetClass);
 		}
 	}
+
+	return true;
 }

@@ -38,7 +38,7 @@ public:
 	bool operator==(const ULocalPlayer* OtherLocalPlayer) const { return LocalPlayer == OtherLocalPlayer; }
 };
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FSimpleGameWidgetRequest
 {
 	GENERATED_BODY()
@@ -65,7 +65,10 @@ public:
 	virtual int32 AddLocalPlayer(ULocalPlayer* NewPlayer, FPlatformUserId UserId) override;
 	virtual bool RemoveLocalPlayer(ULocalPlayer* ExistingPlayer) override;
 
-	void PrimaryLayoutAddWidgets(AHUD* HUD);
+	USimplePrimaryLayout* GetPrimaryLayout(USimpleLocalPlayer* LocalPlayer);
+
+	UFUNCTION(BlueprintCallable, Category = "Simple | UI")
+	bool PushWidgetToLayerStackOfGamePlayTag(FSimpleGameWidgetRequest SimpleGameWidgetRequest);
 protected:
 	void CreateLayoutWidget(USimpleLocalPlayer* LocalPlayer);
 	void AddLayoutToViewport(USimpleLocalPlayer* LocalPlayer, USimplePrimaryLayout* Layout);
@@ -78,7 +81,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Simple | UI")
 	TSoftClassPtr<USimplePrimaryLayout> PrimaryLayoutClass;
-
-	UPROPERTY(EditAnywhere, Category = "Simple | UI")
-	TArray<FSimpleGameWidgetRequest> SimpleGameWidgets;
 };
