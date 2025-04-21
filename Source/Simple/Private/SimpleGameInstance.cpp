@@ -145,7 +145,7 @@ USimplePrimaryLayout* USimpleGameInstance::GetPrimaryLayout(USimpleLocalPlayer* 
 	return LayoutInfo ? LayoutInfo->RootLayout : nullptr;
 }
 
-bool USimpleGameInstance::PushWidgetToLayerStackOfGamePlayTag(FSimpleGameWidgetRequest SimpleGameWidgetRequest)
+bool USimpleGameInstance::PushWidgetToLayerStackOfGamePlayTag(TSoftClassPtr<UCommonActivatableWidget> WidgetClass, FGameplayTag LayerName)
 {
 	if (!PrimaryPlayer.IsValid())
 	{
@@ -161,14 +161,14 @@ bool USimpleGameInstance::PushWidgetToLayerStackOfGamePlayTag(FSimpleGameWidgetR
 
 	if (FRootViewportLayoutInfo* LayoutInfo = RootViewportLayouts.FindByKey(LocalPlayer))
 	{
-		if (TSubclassOf<UCommonActivatableWidget> ConcreteWidgetClass = SimpleGameWidgetRequest.SimpleGameWidgetClass.Get())
+		if (TSubclassOf<UCommonActivatableWidget> ConcreteWidgetClass = WidgetClass.Get())
 		{
 			if (ConcreteWidgetClass == nullptr)
 			{
 				return false;
 			}
 
-			LayoutInfo->RootLayout->PushWidgetToLayerStack(SimpleGameWidgetRequest.LayerID, ConcreteWidgetClass);
+			LayoutInfo->RootLayout->PushWidgetToLayerStack(LayerName, ConcreteWidgetClass);
 		}
 	}
 

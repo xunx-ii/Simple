@@ -38,19 +38,6 @@ public:
 	bool operator==(const ULocalPlayer* OtherLocalPlayer) const { return LocalPlayer == OtherLocalPlayer; }
 };
 
-USTRUCT(BlueprintType)
-struct FSimpleGameWidgetRequest
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category=UI, meta=(Categories="UI.Layer"))
-	FGameplayTag LayerID;
-
-	UPROPERTY(EditAnywhere, Category=UI, meta=(AssetBundles="Client"))
-	TSoftClassPtr<USimpleGameWidget> SimpleGameWidgetClass;
-};
-
-
 UCLASS()
 class SIMPLE_API USimpleGameInstance : public UGameInstance
 {
@@ -68,7 +55,7 @@ public:
 	USimplePrimaryLayout* GetPrimaryLayout(USimpleLocalPlayer* LocalPlayer);
 
 	UFUNCTION(BlueprintCallable, Category = "Simple | UI")
-	bool PushWidgetToLayerStackOfGamePlayTag(FSimpleGameWidgetRequest SimpleGameWidgetRequest);
+	bool PushWidgetToLayerStackOfGamePlayTag(UPARAM(meta = (AllowAbstract = false)) TSoftClassPtr<UCommonActivatableWidget> WidgetClass, UPARAM(meta = (Categories = "UI.Layer")) FGameplayTag LayerName);
 protected:
 	void CreateLayoutWidget(USimpleLocalPlayer* LocalPlayer);
 	void AddLayoutToViewport(USimpleLocalPlayer* LocalPlayer, USimplePrimaryLayout* Layout);
