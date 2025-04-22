@@ -48,4 +48,6 @@ void ASimpleHeroBase::OnInitializedAbilitySystem()
 	Super::OnInitializedAbilitySystem();
 
 	SimpleInputComponent->AbilitySystemComponent = AbilitySystemComponent;
+
+	SimpleHealthComponent->InitializeWithAbilitySystem(AbilitySystemComponent);
 }

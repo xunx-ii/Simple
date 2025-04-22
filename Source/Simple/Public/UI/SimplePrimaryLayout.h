@@ -38,8 +38,6 @@ public:
 	{
 		static_assert(TIsDerivedFrom<ActivatableWidgetT, UCommonActivatableWidget>::IsDerived, "Only CommonActivatableWidgets can be used here");
 
-		static FName NAME_PushingWidgetToLayer("PushingWidgetToLayer");
-
 		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
 
 		TSharedPtr<FStreamableHandle> StreamingHandle = StreamableManager.RequestAsyncLoad(ActivatableWidgetClass.ToSoftObjectPath(), FStreamableDelegate::CreateWeakLambda(this,
