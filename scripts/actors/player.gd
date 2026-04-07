@@ -339,7 +339,11 @@ func _update_weapon(delta: float, shoot_pressed: bool) -> void:
     if not shoot_pressed:
         return
 
-    var fire_result: Dictionary = current_weapon.try_fire(global_position, aim_direction)
+    var fire_result: Dictionary = current_weapon.try_fire(
+        global_position,
+        aim_direction,
+        get_global_mouse_position()
+    )
     if fire_result.is_empty():
         return
 

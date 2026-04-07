@@ -31,6 +31,8 @@ func _build_bullet_config() -> Dictionary:
         "range": 400.0,
         "damage": 1,
         "collision_mask": 10,
+        "use_target_area_damage": true,
+        "impact_radius": 12.0,
         "color": BULLET_COLOR,
         "impact_color": IMPACT_COLOR,
         "width": 1.25,
