@@ -33,7 +33,10 @@ var current_wave: int = 0
 var enemies_alive: int = 0
 var enemies_remaining_to_spawn: int = 0
 var banner_time_remaining: float = 0.0
+var is_shutting_down: bool = false
+var wave_clear_in_progress: bool = false
 
+@onready var canvas_layer: CanvasLayer = $CanvasLayer
 @onready var player = $Player
 @onready var covers: Node2D = $Covers
 @onready var navigation_region: NavigationRegion2D = $NavigationRegion2D
@@ -48,17 +51,28 @@ var banner_time_remaining: float = 0.0
 @onready var dash_label: Label = $CanvasLayer/DashLabel
 @onready var dash_bar_fill: ColorRect = $CanvasLayer/DashBarFill
 @onready var banner_label: Label = $CanvasLayer/BannerLabel
+@onready var pause_overlay: Control = $CanvasLayer/PauseOverlay
+@onready var continue_button: Button = $CanvasLayer/PauseOverlay/PausePanel/PauseButtons/ContinueButton
+@onready var quit_button: Button = $CanvasLayer/PauseOverlay/PausePanel/PauseButtons/QuitButton
 @onready var fog_overlay: ColorRect = $CanvasLayer/FogOverlay
 @onready var damage_indicators: Node2D = $CanvasLayer/DamageIndicators
 @onready var crosshair: Node2D = $CanvasLayer/Crosshair
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("world_controller")
 	InputSetup.ensure_default_actions()
 	Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN
 	randomize()
 	_spawn_covers()
 	_rebuild_navigation_region()
+
+	_configure_process_modes()
+	continue_button.text = "继续游戏"
+	quit_button.text = "退出游戏"
+	continue_button.pressed.connect(_on_continue_button_pressed)
+	quit_button.pressed.connect(_on_quit_button_pressed)
+	_set_pause_menu_visible(false)
 
 	player.configure_arena(WORLD_RECT)
 	if fog_overlay != null and fog_overlay.has_method("setup"):
@@ -81,6 +95,12 @@ func _process(delta: float) -> void:
 	if game_over and Input.is_action_just_pressed("restart"):
 		get_tree().reload_current_scene()
 
+	if not game_over and Input.is_action_just_pressed("ui_cancel"):
+		_set_pause_menu_visible(not get_tree().paused)
+
+	if get_tree().paused:
+		return
+
 	if banner_time_remaining > 0.0:
 		banner_time_remaining = max(banner_time_remaining - delta, 0.0)
 		if banner_time_remaining == 0.0 and not game_over:
@@ -90,6 +110,7 @@ func _process(delta: float) -> void:
 	_update_ui()
 
 func _exit_tree() -> void:
+	is_shutting_down = true
 	if Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -176,6 +197,7 @@ func _on_player_health_changed(_current_health: int) -> void:
 	_update_ui()
 
 func _on_player_defeated() -> void:
+	_set_pause_menu_visible(false)
 	game_over = true
 	spawn_timer.stop()
 	state_label.text = "Game Over"
@@ -188,12 +210,15 @@ func _on_enemy_defeated() -> void:
 	_update_ui()
 
 func _on_enemy_tree_exited() -> void:
+	if is_shutting_down or not is_inside_tree():
+		return
+
 	enemies_alive = max(enemies_alive - 1, 0)
 
 	if game_over:
 		return
 
-	if enemies_alive == 0 and enemies_remaining_to_spawn == 0:
+	if enemies_alive == 0 and enemies_remaining_to_spawn == 0 and not wave_clear_in_progress:
 		_on_wave_cleared()
 
 func _on_cover_destroyed(cell: Vector2i) -> void:
@@ -227,6 +252,7 @@ func _update_ui() -> void:
 	state_label.text = "WASD Move  SHIFT Dash\nMouse Aim  RMB Aim  LMB Shoot\n%s  ENEMY NAV AGENT" % player.get_weapon_name()
 
 func _start_next_wave() -> void:
+	wave_clear_in_progress = false
 	current_wave += 1
 	enemies_remaining_to_spawn = 4 + current_wave * 2
 	enemies_alive = 0
@@ -236,12 +262,22 @@ func _start_next_wave() -> void:
 	_update_ui()
 
 func _on_wave_cleared() -> void:
+	if is_shutting_down or not is_inside_tree() or wave_clear_in_progress:
+		return
+
+	wave_clear_in_progress = true
 	player.recover(1)
 	spawn_timer.stop()
 	_show_banner("WAVE %d CLEAR" % current_wave)
-	await get_tree().create_timer(1.2).timeout
+	var tree := get_tree()
+	if tree == null:
+		wave_clear_in_progress = false
+		return
 
-	if game_over:
+	await tree.create_timer(1.2, false).timeout
+
+	if is_shutting_down or not is_inside_tree() or game_over:
+		wave_clear_in_progress = false
 		return
 
 	_start_next_wave()
@@ -249,6 +285,42 @@ func _on_wave_cleared() -> void:
 func _show_banner(text: String) -> void:
 	banner_label.text = text
 	banner_time_remaining = WAVE_BANNER_TIME
+
+func _on_continue_button_pressed() -> void:
+	_set_pause_menu_visible(false)
+
+func _on_quit_button_pressed() -> void:
+	is_shutting_down = true
+	var tree := get_tree()
+	if tree != null:
+		tree.quit()
+
+func _set_pause_menu_visible(menu_open: bool) -> void:
+	pause_overlay.visible = menu_open
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if menu_open else Input.MOUSE_MODE_CONFINED_HIDDEN
+	get_tree().paused = menu_open
+
+func _configure_process_modes() -> void:
+	var pausable_nodes: Array[Node] = [
+		player,
+		covers,
+		navigation_region,
+		enemies,
+		bullets,
+		hit_effects,
+		spawn_timer
+	]
+
+	for node in pausable_nodes:
+		node.process_mode = Node.PROCESS_MODE_PAUSABLE
+
+	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	fog_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	damage_indicators.process_mode = Node.PROCESS_MODE_ALWAYS
+	crosshair.process_mode = Node.PROCESS_MODE_ALWAYS
+	pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
+	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
 
 func _build_enemy_config(is_melee_enemy: bool) -> Dictionary:
 	if is_melee_enemy:
