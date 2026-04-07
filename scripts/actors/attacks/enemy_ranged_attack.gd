@@ -8,23 +8,14 @@ const BULLET_FLASH_DURATION := 0.05
 const BULLET_VISUAL_SPEED := 7600.0
 
 func perform_attack(enemy) -> void:
-    if enemy == null or not is_instance_valid(enemy.target):
+    if enemy == null or not enemy.has_attack_target():
         return
 
-    var world_controller = enemy.world_controller
-    if world_controller == null or not world_controller.has_method("spawn_bullet"):
-        return
-
-    var shot_direction: Vector2 = (enemy.target.global_position - enemy.global_position).normalized()
-    if shot_direction == Vector2.ZERO:
-        shot_direction = enemy.facing_direction
-
-    world_controller.spawn_bullet(
-        enemy.global_position + shot_direction * MUZZLE_OFFSET,
-        shot_direction,
+    enemy.fire_attack_bullet(
+        MUZZLE_OFFSET,
         {
-            "range": enemy.attack_range,
-            "damage": enemy.touch_damage,
+            "range": enemy.get_attack_range_value(),
+            "damage": enemy.get_attack_damage_value(),
             "collision_mask": 9,
             "color": BULLET_COLOR,
             "width": BULLET_WIDTH,

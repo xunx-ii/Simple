@@ -10,6 +10,7 @@ const GAME_OVER_TEXT := "Game Over"
 
 var game_over: bool = false
 var player: Node2D = null
+var current_hud_state: Dictionary = {}
 
 @onready var fog_overlay: ColorRect = $FogOverlay
 @onready var score_label: Label = $ScoreLabel
@@ -56,18 +57,34 @@ func setup(player_node: Node2D) -> void:
 		crosshair.setup(player)
 
 func apply_hud(state: Dictionary) -> void:
-	var next_game_over: bool = state.get("game_over", false)
+	var normalized_state := {
+		"health": int(state.get("health", 0)),
+		"score": int(state.get("score", 0)),
+		"wave": int(state.get("wave", 0)),
+		"dash_ready": bool(state.get("dash_ready", false)),
+		"dash_cooldown": float(state.get("dash_cooldown", 0.0)),
+		"dash_ratio": float(state.get("dash_ratio", 0.0)),
+		"weapon_name": str(state.get("weapon_name", "UNARMED")),
+		"banner_text": str(state.get("banner_text", "")),
+		"game_over": bool(state.get("game_over", false))
+	}
+
+	if current_hud_state == normalized_state:
+		return
+
+	current_hud_state = normalized_state
+	var next_game_over: bool = normalized_state["game_over"]
 	if next_game_over and not game_over:
 		set_pause_menu_visible(false)
 
 	game_over = next_game_over
-	score_label.text = "HP: %d  SCORE: %d" % [state.get("health", 0), state.get("score", 0)]
-	wave_label.text = "WAVE %d" % state.get("wave", 0)
-	banner_label.text = str(state.get("banner_text", ""))
+	score_label.text = "HP: %d  SCORE: %d" % [normalized_state["health"], normalized_state["score"]]
+	wave_label.text = "WAVE %d" % normalized_state["wave"]
+	banner_label.text = normalized_state["banner_text"]
 
-	var dash_ready: bool = state.get("dash_ready", false)
-	var dash_ratio: float = state.get("dash_ratio", 0.0)
-	dash_label.text = DASH_READY_TEXT if dash_ready else "DASH %.1f" % state.get("dash_cooldown", 0.0)
+	var dash_ready: bool = normalized_state["dash_ready"]
+	var dash_ratio: float = normalized_state["dash_ratio"]
+	dash_label.text = DASH_READY_TEXT if dash_ready else "DASH %.1f" % normalized_state["dash_cooldown"]
 	dash_bar_fill.size.x = 72.0 * dash_ratio
 	dash_bar_fill.color = Color(0.35, 0.87, 1.0, 1.0) if dash_ready else Color(0.31, 0.67, 0.96, 1.0)
 
@@ -76,7 +93,7 @@ func apply_hud(state: Dictionary) -> void:
 		state_label.text = GAME_OVER_TEXT
 		return
 
-	state_label.text = ACTIVE_STATE_TEMPLATE % state.get("weapon_name", "UNARMED")
+	state_label.text = ACTIVE_STATE_TEMPLATE % normalized_state["weapon_name"]
 
 func set_pause_menu_visible(menu_open: bool) -> void:
 	pause_overlay.visible = menu_open

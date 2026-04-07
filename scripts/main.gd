@@ -176,19 +176,7 @@ func _on_cover_destroyed(cell: Vector2i) -> void:
 		_queue_navigation_rebuild()
 
 func _update_ui() -> void:
-	ui_controller.apply_hud(
-		{
-			"health": player.current_health,
-			"score": wave_director.score,
-			"wave": wave_director.current_wave,
-			"dash_ready": player.is_dash_ready(),
-			"dash_cooldown": player.get_dash_cooldown_remaining(),
-			"dash_ratio": player.get_dash_ratio(),
-			"weapon_name": player.get_weapon_name(),
-			"banner_text": wave_director.banner_text,
-			"game_over": game_over
-		}
-	)
+	ui_controller.apply_hud(_build_hud_state())
 
 func _start_next_wave() -> void:
 	wave_director.start_next_wave(spawn_timer)
@@ -337,6 +325,19 @@ func _build_outline_from_rect(rect: Rect2) -> PackedVector2Array:
 	var bottom_left := Vector2(rect.position.x, rect.end.y)
 
 	return PackedVector2Array([top_left, bottom_left, bottom_right, top_right])
+
+func _build_hud_state() -> Dictionary:
+	return {
+		"health": player.current_health,
+		"score": wave_director.score,
+		"wave": wave_director.current_wave,
+		"dash_ready": player.is_dash_ready(),
+		"dash_cooldown": player.get_dash_cooldown_remaining(),
+		"dash_ratio": player.get_dash_ratio(),
+		"weapon_name": player.get_weapon_name(),
+		"banner_text": wave_director.banner_text,
+		"game_over": game_over
+	}
 
 func _is_point_walkable(point: Vector2) -> bool:
 	return cover_manager.is_point_walkable(point)

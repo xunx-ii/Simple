@@ -434,6 +434,49 @@ func _get_chase_destination(target_visible: bool, _can_engage_target: bool) -> V
 func _has_persistent_target() -> bool:
     return target_locked
 
+func has_attack_target() -> bool:
+    return is_instance_valid(target)
+
+func get_attack_direction() -> Vector2:
+    if not has_attack_target():
+        return facing_direction
+
+    var attack_direction := target.global_position - global_position
+    if attack_direction == Vector2.ZERO:
+        return facing_direction
+
+    return attack_direction.normalized()
+
+func get_attack_range_value() -> float:
+    return attack_range
+
+func get_attack_damage_value() -> int:
+    return touch_damage
+
+func fire_attack_bullet(muzzle_offset: float, bullet_config: Dictionary) -> void:
+    if world_controller == null or not world_controller.has_method("spawn_bullet"):
+        return
+
+    var shot_direction := get_attack_direction()
+    world_controller.spawn_bullet(
+        global_position + shot_direction * muzzle_offset,
+        shot_direction,
+        bullet_config
+    )
+
+func apply_attack_contact_hit(contact_margin: float = 0.0) -> bool:
+    if not has_attack_target():
+        return false
+
+    if global_position.distance_to(target.global_position) > attack_range + max(contact_margin, 0.0):
+        return false
+
+    if target.has_method("take_hit"):
+        target.call("take_hit", global_position, touch_damage)
+        return true
+
+    return false
+
 func _can_attack_without_sight() -> bool:
     if attack_component != null and attack_component.has_method("can_attack_without_sight"):
         return attack_component.can_attack_without_sight(self)
