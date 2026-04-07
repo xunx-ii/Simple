@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2"]
 [ext_resource type="FontFile" path="res://assets/fonts/vonwaon.ttf" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/crosshair.tscn" id="4"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -17,6 +18,8 @@ position = Vector2(640, 360)
 [node name="Enemies" type="Node2D" parent="."]
 
 [node name="Bullets" type="Node2D" parent="."]
+
+[node name="HitEffects" type="Node2D" parent="."]
 
 [node name="SpawnTimer" type="Timer" parent="."]
 wait_time = 1.1
@@ -95,3 +98,5 @@ horizontal_alignment = 1
 text = ""
 theme_override_fonts/font = ExtResource("3")
 theme_override_font_sizes/font_size = 18
+
+[node name="Crosshair" parent="CanvasLayer" instance=ExtResource("4")]

@@ -4,6 +4,7 @@ const InputSetup = preload("res://scripts/systems/input_setup.gd")
 const EnemyScene := preload("res://scenes/actors/enemy.tscn")
 const BulletScene := preload("res://scenes/actors/bullet.tscn")
 const CoverScene := preload("res://scenes/actors/cover.tscn")
+const HitSparkScene := preload("res://scenes/effects/hit_spark.tscn")
 
 const WORLD_SIZE := Vector2(1280.0, 720.0)
 const WORLD_RECT := Rect2(Vector2.ZERO, WORLD_SIZE)
@@ -48,6 +49,7 @@ var banner_time_remaining: float = 0.0
 @onready var navigation_region: NavigationRegion2D = $NavigationRegion2D
 @onready var enemies: Node2D = $Enemies
 @onready var bullets: Node2D = $Bullets
+@onready var hit_effects: Node2D = $HitEffects
 @onready var spawn_timer: Timer = $SpawnTimer
 @onready var score_label: Label = $CanvasLayer/ScoreLabel
 @onready var state_label: Label = $CanvasLayer/StateLabel
@@ -56,14 +58,19 @@ var banner_time_remaining: float = 0.0
 @onready var dash_label: Label = $CanvasLayer/DashLabel
 @onready var dash_bar_fill: ColorRect = $CanvasLayer/DashBarFill
 @onready var banner_label: Label = $CanvasLayer/BannerLabel
+@onready var crosshair: Node2D = $CanvasLayer/Crosshair
 
 func _ready() -> void:
+    add_to_group("world_controller")
     InputSetup.ensure_default_actions()
+    Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN
     randomize()
     _spawn_covers()
     _rebuild_navigation_region()
 
     player.configure_arena(WORLD_RECT)
+    if crosshair != null and crosshair.has_method("setup"):
+        crosshair.setup(player)
     player.shoot_requested.connect(_on_player_shoot_requested)
     player.health_changed.connect(_on_player_health_changed)
     player.defeated.connect(_on_player_defeated)
@@ -84,6 +91,10 @@ func _process(delta: float) -> void:
             banner_label.text = ""
 
     _update_ui()
+
+func _exit_tree() -> void:
+    if Input.mouse_mode != Input.MOUSE_MODE_VISIBLE:
+        Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _draw() -> void:
     draw_rect(WORLD_RECT, Color(0.05, 0.06, 0.08, 1.0), true)
@@ -143,21 +154,23 @@ func _on_spawn_timer_timeout() -> void:
     enemies_alive += 1
     enemies_remaining_to_spawn -= 1
 
-func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
+func _on_player_shoot_requested(projectiles: Array) -> void:
     if game_over:
         return
 
-    spawn_bullet(origin, direction, {
-        "range": 360.0,
-        "damage": 1,
-        "collision_mask": 10,
-        "color": Color(1.0, 0.952941, 0.65098, 0.95),
-        "width": 1.4,
-        "flash_duration": 0.05,
-        "can_hit_player": false,
-        "can_hit_enemies": true,
-        "can_hit_covers": true
-    })
+    for projectile_data_variant in projectiles:
+        if typeof(projectile_data_variant) != TYPE_DICTIONARY:
+            continue
+
+        var projectile_data: Dictionary = projectile_data_variant
+        if projectile_data.is_empty():
+            continue
+
+        spawn_bullet(
+            projectile_data.get("origin", player.global_position),
+            projectile_data.get("direction", Vector2.RIGHT),
+            projectile_data.get("config", {})
+        )
 
 func _on_player_health_changed(_current_health: int) -> void:
     _update_ui()
@@ -184,7 +197,7 @@ func _on_enemy_tree_exited() -> void:
         _on_wave_cleared()
 
 func _on_cover_destroyed(cell_rect: Rect2i) -> void:
-    var world_rect := _cell_rect_to_world_rect(cell_rect).grow(NAVIGATION_MARGIN)
+    var world_rect := _cell_rect_to_world_rect(cell_rect)
     var remove_index := -1
 
     for index in range(active_cover_rects.size()):
@@ -211,7 +224,7 @@ func _update_ui() -> void:
         return
 
     restart_label.visible = false
-    state_label.text = "WASD Move  SHIFT Dash\nMouse Aim  LMB Shoot\nEnemy uses NavigationAgent2D"
+    state_label.text = "WASD Move  SHIFT Dash\nMouse Aim  RMB Aim  LMB Shoot\n%s  ENEMY NAV AGENT" % player.get_weapon_name()
 
 func _start_next_wave() -> void:
     current_wave += 1
@@ -254,6 +267,14 @@ func spawn_bullet(origin: Vector2, direction: Vector2, config: Dictionary = {}) 
     bullet.global_position = origin
     bullet.setup(direction, WORLD_RECT, config)
     bullets.add_child(bullet)
+
+func spawn_hit_spark(impact_position: Vector2, normal: Vector2, config: Dictionary = {}) -> void:
+    var hit_spark = HitSparkScene.instantiate()
+    hit_spark.global_position = impact_position
+    hit_effects.add_child(hit_spark)
+
+    if hit_spark.has_method("setup"):
+        hit_spark.setup(normal, config)
 
 func find_walkable_point_near(origin: Vector2, radius: float) -> Vector2:
     for _attempt in range(24):
@@ -303,7 +324,7 @@ func _spawn_covers() -> void:
         covers.add_child(cover)
         cover.configure(TILE_SIZE, cover_config["size"], cover_config["health"], cover_config["tint"], cell_rect)
         cover.destroyed.connect(_on_cover_destroyed)
-        active_cover_rects.append(_cell_rect_to_world_rect(cell_rect).grow(NAVIGATION_MARGIN))
+        active_cover_rects.append(_cell_rect_to_world_rect(cell_rect))
 
 func _rebuild_navigation_region() -> void:
     var navigation_polygon := NavigationPolygon.new()

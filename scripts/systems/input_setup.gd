@@ -9,6 +9,7 @@ static func ensure_default_actions() -> void:
     _ensure_key_action("dash", [KEY_SHIFT, KEY_X])
     _ensure_key_action("restart", [KEY_R, KEY_ENTER, KEY_KP_ENTER])
     _ensure_mouse_button_action("shoot", MOUSE_BUTTON_LEFT)
+    _ensure_mouse_button_action("aim", MOUSE_BUTTON_RIGHT)
 
 static func _ensure_key_action(action_name: StringName, keycodes: Array) -> void:
     if not InputMap.has_action(action_name):

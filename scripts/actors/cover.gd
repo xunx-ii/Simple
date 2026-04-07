@@ -4,6 +4,7 @@ extends StaticBody2D
 signal destroyed(cell_rect: Rect2i)
 
 const HIT_FLASH_COLOR := Color(1.0, 0.96, 0.72, 1.0)
+const COLLISION_INSET := 4.0
 
 var tile_size: int = 16
 var tile_dimensions: Vector2i = Vector2i(2, 2)
@@ -67,7 +68,10 @@ func _apply_shape() -> void:
     var pixel_size: Vector2 = Vector2(tile_dimensions) * float(tile_size)
     var rectangle_shape := collision_shape.shape as RectangleShape2D
     if rectangle_shape != null:
-        rectangle_shape.size = pixel_size - Vector2.ONE * 2.0
+        rectangle_shape.size = Vector2(
+            max(pixel_size.x - COLLISION_INSET, 4.0),
+            max(pixel_size.y - COLLISION_INSET, 4.0)
+        )
 
     sprite.scale = Vector2(float(tile_dimensions.x), float(tile_dimensions.y))
 

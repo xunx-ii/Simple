@@ -1,30 +1,39 @@
 class_name PlayerController
 extends CharacterBody2D
 
-signal shoot_requested(origin: Vector2, direction: Vector2)
+const MachineGunWeaponScript = preload("res://scripts/weapons/machine_gun.gd")
+
+signal shoot_requested(projectiles: Array)
 signal health_changed(current_health: int)
 signal defeated
 
 const PLAYER_COLOR := Color(0.360784, 0.870588, 1.0, 1.0)
 const HIT_FLASH_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 const MOVE_SPEED := 88.0
-const SHOOT_COOLDOWN := 0.18
+const AIM_MOVE_SPEED_MULTIPLIER := 0.58
 const HIT_INVULNERABILITY := 0.6
 const DASH_SPEED := 200.0
 const DASH_DURATION := 0.12
 const DASH_COOLDOWN := 1.0
-const MAX_HEALTH := 5
+const MAX_HEALTH := 100
 const BODY_MARGIN := 8.0
+const FIRE_KICK_RECOVERY := 20.0
+const CAMERA_SHAKE_DECAY := 26.0
+const MAX_CAMERA_SHAKE := 6.0
+const MAX_SPRITE_KICK := 5.0
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(320.0, 180.0))
 var aim_direction: Vector2 = Vector2.RIGHT
 var current_health: int = MAX_HEALTH
-var shoot_cooldown_remaining: float = 0.0
 var hit_invulnerability_remaining: float = 0.0
 var dash_time_remaining: float = 0.0
 var dash_cooldown_remaining: float = 0.0
 var dash_direction: Vector2 = Vector2.RIGHT
+var is_aiming: bool = false
 var is_dead: bool = false
+var current_weapon
+var sprite_kick_offset: Vector2 = Vector2.ZERO
+var camera_shake_strength: float = 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var camera: Camera2D = $Camera2D
@@ -32,20 +41,24 @@ var is_dead: bool = false
 func _ready() -> void:
     add_to_group("player")
     sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    current_weapon = MachineGunWeaponScript.new()
     health_changed.emit(current_health)
 
 func _physics_process(delta: float) -> void:
     if is_dead:
         velocity = Vector2.ZERO
+        _update_fire_feedback(delta)
         return
 
-    shoot_cooldown_remaining = max(shoot_cooldown_remaining - delta, 0.0)
     hit_invulnerability_remaining = max(hit_invulnerability_remaining - delta, 0.0)
     dash_time_remaining = max(dash_time_remaining - delta, 0.0)
     dash_cooldown_remaining = max(dash_cooldown_remaining - delta, 0.0)
 
     var input_vector := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+    var shoot_pressed: bool = Input.is_action_pressed("shoot")
+    is_aiming = Input.is_action_pressed("aim") and not is_dead
     _update_aim_direction()
+    _update_weapon(delta, shoot_pressed)
 
     if Input.is_action_just_pressed("dash") and dash_cooldown_remaining <= 0.0:
         _start_dash(input_vector)
@@ -53,16 +66,14 @@ func _physics_process(delta: float) -> void:
     if dash_time_remaining > 0.0:
         velocity = dash_direction * DASH_SPEED
     else:
-        velocity = input_vector * MOVE_SPEED
+        var move_speed := MOVE_SPEED * (AIM_MOVE_SPEED_MULTIPLIER if is_aiming else 1.0)
+        velocity = input_vector * move_speed
 
     move_and_slide()
 
     _clamp_to_arena()
+    _update_fire_feedback(delta)
     _update_visuals()
-
-    if Input.is_action_pressed("shoot") and shoot_cooldown_remaining <= 0.0:
-        shoot_cooldown_remaining = SHOOT_COOLDOWN
-        shoot_requested.emit(global_position + aim_direction * 10.0, aim_direction)
 
 func configure_arena(rect: Rect2) -> void:
     arena_rect = rect
@@ -72,6 +83,7 @@ func configure_arena(rect: Rect2) -> void:
     camera.limit_top = int(rect.position.y)
     camera.limit_right = int(rect.end.x)
     camera.limit_bottom = int(rect.end.y)
+    camera.offset = Vector2.ZERO
     camera.reset_smoothing()
 
 func take_hit(source_position: Vector2, damage: int = 1) -> void:
@@ -111,14 +123,16 @@ func _clamp_to_arena() -> void:
     )
 
 func _update_visuals() -> void:
+    sprite.position = sprite_kick_offset
+
     if hit_invulnerability_remaining > 0.0 and int(hit_invulnerability_remaining * 20.0) % 2 == 0:
         sprite.modulate = HIT_FLASH_COLOR
-        sprite.scale = Vector2.ONE
+        sprite.scale = Vector2.ONE * (1.18 if dash_time_remaining > 0.0 else 1.0)
         return
 
     sprite.scale = Vector2.ONE * (1.18 if dash_time_remaining > 0.0 else 1.0)
     sprite.modulate = PLAYER_COLOR
-    sprite.rotation = aim_direction.angle()
+    sprite.rotation = aim_direction.angle() + sprite_kick_offset.x * 0.015
 
 func recover(amount: int) -> void:
     if amount <= 0 or is_dead:
@@ -136,6 +150,21 @@ func get_dash_ratio() -> float:
 func get_dash_cooldown_remaining() -> float:
     return dash_cooldown_remaining
 
+func get_weapon_name() -> String:
+    if current_weapon == null:
+        return "UNARMED"
+
+    return current_weapon.weapon_name
+
+func get_crosshair_outer_scale() -> float:
+    if current_weapon == null or not current_weapon.has_method("get_crosshair_outer_scale"):
+        return 1.0
+
+    return current_weapon.get_crosshair_outer_scale()
+
+func is_in_aim_mode() -> bool:
+    return is_aiming
+
 func _start_dash(input_vector: Vector2) -> void:
     dash_direction = input_vector if input_vector.length_squared() > 0.0 else aim_direction
     if dash_direction == Vector2.ZERO:
@@ -144,3 +173,40 @@ func _start_dash(input_vector: Vector2) -> void:
     dash_direction = dash_direction.normalized()
     dash_time_remaining = DASH_DURATION
     dash_cooldown_remaining = DASH_COOLDOWN
+
+func _update_weapon(delta: float, shoot_pressed: bool) -> void:
+    if current_weapon == null:
+        return
+
+    current_weapon.update(delta, shoot_pressed, is_aiming)
+
+    if not shoot_pressed:
+        return
+
+    var fire_result: Dictionary = current_weapon.try_fire(global_position, aim_direction)
+    if fire_result.is_empty():
+        return
+
+    _apply_fire_feedback(fire_result)
+    shoot_requested.emit(fire_result.get("projectiles", []))
+
+func _apply_fire_feedback(fire_result: Dictionary) -> void:
+    var kickback: float = fire_result.get("player_kick", 0.0)
+    var fire_direction: Vector2 = aim_direction if aim_direction != Vector2.ZERO else Vector2.RIGHT
+    var side_direction := Vector2(-fire_direction.y, fire_direction.x) * randf_range(-0.4, 0.4)
+    sprite_kick_offset += (-fire_direction * kickback) + side_direction
+    sprite_kick_offset = sprite_kick_offset.limit_length(MAX_SPRITE_KICK)
+    camera_shake_strength = min(camera_shake_strength + fire_result.get("camera_shake", 0.0), MAX_CAMERA_SHAKE)
+
+func _update_fire_feedback(delta: float) -> void:
+    sprite_kick_offset = sprite_kick_offset.lerp(Vector2.ZERO, clampf(delta * FIRE_KICK_RECOVERY, 0.0, 1.0))
+    camera_shake_strength = max(camera_shake_strength - CAMERA_SHAKE_DECAY * delta, 0.0)
+
+    if camera_shake_strength <= 0.0:
+        camera.offset = Vector2.ZERO
+        return
+
+    camera.offset = Vector2(
+        randf_range(-camera_shake_strength, camera_shake_strength),
+        randf_range(-camera_shake_strength, camera_shake_strength)
+    )

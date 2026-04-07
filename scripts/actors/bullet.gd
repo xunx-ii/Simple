@@ -15,6 +15,7 @@ var flash_duration: float = DEFAULT_FLASH_DURATION
 var remaining_flash_time: float = DEFAULT_FLASH_DURATION
 var collision_mask_bits: int = DEFAULT_COLLISION_MASK
 var beam_color: Color = DEFAULT_COLOR
+var impact_color: Color = DEFAULT_COLOR
 var beam_width: float = DEFAULT_WIDTH
 var can_hit_player: bool = false
 var can_hit_enemies: bool = true
@@ -45,6 +46,7 @@ func setup(move_direction: Vector2, _rect: Rect2, config: Dictionary = {}) -> vo
     remaining_flash_time = flash_duration
     collision_mask_bits = config.get("collision_mask", DEFAULT_COLLISION_MASK)
     beam_color = config.get("color", DEFAULT_COLOR)
+    impact_color = config.get("impact_color", beam_color)
     beam_width = config.get("width", DEFAULT_WIDTH)
     can_hit_player = config.get("can_hit_player", false)
     can_hit_enemies = config.get("can_hit_enemies", true)
@@ -62,6 +64,7 @@ func _fire_hitscan() -> void:
 
     if not hit.is_empty():
         hit_position = hit.get("position", hit_position)
+        _spawn_hit_spark(hit_position, hit.get("normal", -direction))
         _apply_hit(hit.get("collider"))
 
     trail.points = PackedVector2Array([Vector2.ZERO, hit_position - global_position])
@@ -85,3 +88,10 @@ func _apply_hit(collider_variant: Variant) -> void:
 func _apply_visuals() -> void:
     trail.width = beam_width
     trail.default_color = beam_color
+
+func _spawn_hit_spark(hit_position: Vector2, hit_normal: Vector2) -> void:
+    var world_controller := get_tree().get_first_node_in_group("world_controller")
+    if world_controller == null or not world_controller.has_method("spawn_hit_spark"):
+        return
+
+    world_controller.spawn_hit_spark(hit_position, hit_normal, {"color": impact_color})
