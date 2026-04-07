@@ -52,6 +52,8 @@ var banner_time_remaining: float = 0.0
 @onready var dash_label: Label = $CanvasLayer/DashLabel
 @onready var dash_bar_fill: ColorRect = $CanvasLayer/DashBarFill
 @onready var banner_label: Label = $CanvasLayer/BannerLabel
+@onready var fog_overlay: ColorRect = $CanvasLayer/FogOverlay
+@onready var damage_indicators: Node2D = $CanvasLayer/DamageIndicators
 @onready var crosshair: Node2D = $CanvasLayer/Crosshair
 
 func _ready() -> void:
@@ -63,6 +65,10 @@ func _ready() -> void:
 	_rebuild_navigation_region()
 
 	player.configure_arena(WORLD_RECT)
+	if fog_overlay != null and fog_overlay.has_method("setup"):
+		fog_overlay.setup(player)
+	if damage_indicators != null and damage_indicators.has_method("setup"):
+		damage_indicators.setup(player)
 	if crosshair != null and crosshair.has_method("setup"):
 		crosshair.setup(player)
 	player.shoot_requested.connect(_on_player_shoot_requested)
@@ -84,6 +90,7 @@ func _process(delta: float) -> void:
 		if banner_time_remaining == 0.0 and not game_over:
 			banner_label.text = ""
 
+	_update_enemy_visibility()
 	_update_ui()
 
 func _exit_tree() -> void:
@@ -145,6 +152,7 @@ func _on_spawn_timer_timeout() -> void:
 	enemy.tree_exited.connect(_on_enemy_tree_exited)
 	enemies.add_child(enemy)
 	enemy.setup(player, WORLD_RECT, _build_enemy_config(), self)
+	enemy.visible = player.is_point_in_vision(enemy.global_position)
 	enemies_alive += 1
 	enemies_remaining_to_spawn -= 1
 
@@ -251,10 +259,21 @@ func _build_enemy_config() -> Dictionary:
 		"touch_damage": 1,
 		"attack_cooldown": max(1.05 - current_wave * 0.04, 0.5),
 		"sight_range": 224.0 + current_wave * 8.0,
-		"attack_range": 164.0 + current_wave * 6.0,
-		"patrol_radius": 112.0 + current_wave * 6.0,
+		"attack_range": 108.0 + current_wave * 4.0,
+		"patrol_radius": 152.0 + current_wave * 8.0,
 		"chase_speed_multiplier": 1.18 + current_wave * 0.015
 	}
+
+func _update_enemy_visibility() -> void:
+	if not is_instance_valid(player):
+		return
+
+	for enemy_node in enemies.get_children():
+		var enemy := enemy_node as Node2D
+		if enemy == null:
+			continue
+
+		enemy.visible = player.visible and player.is_point_in_vision(enemy.global_position)
 
 func spawn_bullet(origin: Vector2, direction: Vector2, config: Dictionary = {}) -> void:
 	var bullet = BulletScene.instantiate()

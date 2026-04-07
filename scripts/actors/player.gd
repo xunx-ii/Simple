@@ -5,6 +5,7 @@ const MachineGunWeaponScript = preload("res://scripts/weapons/machine_gun.gd")
 
 signal shoot_requested(projectiles: Array)
 signal health_changed(current_health: int)
+signal hidden_hit_received(source_position: Vector2)
 signal defeated
 
 const PLAYER_COLOR := Color(0.360784, 0.870588, 1.0, 1.0)
@@ -21,6 +22,7 @@ const FIRE_KICK_RECOVERY := 20.0
 const CAMERA_SHAKE_DECAY := 26.0
 const MAX_CAMERA_SHAKE := 6.0
 const MAX_SPRITE_KICK := 5.0
+const VISION_CONE_DEGREES := 120.0
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(320.0, 180.0))
 var aim_direction: Vector2 = Vector2.RIGHT
@@ -89,6 +91,9 @@ func configure_arena(rect: Rect2) -> void:
 func take_hit(source_position: Vector2, damage: int = 1) -> void:
     if is_dead or hit_invulnerability_remaining > 0.0 or dash_time_remaining > 0.0:
         return
+
+    if not is_point_in_vision(source_position):
+        hidden_hit_received.emit(source_position)
 
     current_health = max(current_health - max(damage, 1), 0)
     hit_invulnerability_remaining = HIT_INVULNERABILITY
@@ -164,6 +169,20 @@ func get_crosshair_outer_scale() -> float:
 
 func is_in_aim_mode() -> bool:
     return is_aiming
+
+func get_view_direction() -> Vector2:
+    return aim_direction if aim_direction != Vector2.ZERO else Vector2.RIGHT
+
+func get_vision_cone_degrees() -> float:
+    return VISION_CONE_DEGREES
+
+func is_point_in_vision(world_point: Vector2) -> bool:
+    var to_point := world_point - global_position
+    if to_point.length_squared() <= 1.0:
+        return true
+
+    var half_angle_cos: float = cos(deg_to_rad(VISION_CONE_DEGREES * 0.5))
+    return get_view_direction().dot(to_point.normalized()) >= half_angle_cos
 
 func _start_dash(input_vector: Vector2) -> void:
     dash_direction = input_vector if input_vector.length_squared() > 0.0 else aim_direction

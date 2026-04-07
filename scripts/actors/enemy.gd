@@ -15,11 +15,12 @@ const DEFAULT_MOVE_SPEED := 42.0
 const DEFAULT_MAX_HEALTH := 2
 const DEFAULT_ATTACK_COOLDOWN := 1.0
 const DEFAULT_SIGHT_RANGE := 224.0
-const DEFAULT_ATTACK_RANGE := 168.0
-const DEFAULT_PATROL_RADIUS := 112.0
+const DEFAULT_ATTACK_RANGE := 120.0
+const DEFAULT_PATROL_RADIUS := 148.0
 const DEFAULT_CHASE_SPEED_MULTIPLIER := 1.22
-const WANDER_SPEED_MULTIPLIER := 0.62
-const PATROL_SPEED_MULTIPLIER := 0.82
+const WANDER_SPEED_MULTIPLIER := 0.72
+const PATROL_SPEED_MULTIPLIER := 0.96
+const PATROL_POINT_COUNT := 5
 const BODY_MARGIN := 8.0
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(1280.0, 720.0))
@@ -263,9 +264,7 @@ func _set_navigation_target(destination: Vector2) -> void:
 
 func _build_patrol_points() -> void:
     patrol_points.clear()
-    patrol_points.append(home_position)
-
-    for _index in range(3):
+    for _index in range(PATROL_POINT_COUNT):
         patrol_points.append(_pick_random_patrol_point())
 
     patrol_index = 0
@@ -288,8 +287,15 @@ func _pick_random_patrol_point() -> Vector2:
 func _advance_patrol_point() -> void:
     if patrol_points.is_empty():
         _build_patrol_points()
+        _set_navigation_target(movement_target)
+        return
 
-    patrol_index = (patrol_index + 1) % patrol_points.size()
+    patrol_index += 1
+    if patrol_index >= patrol_points.size():
+        _build_patrol_points()
+        _set_navigation_target(movement_target)
+        return
+
     movement_target = patrol_points[patrol_index]
     _set_navigation_target(movement_target)
 
@@ -304,15 +310,17 @@ func _enter_state(new_state: int) -> void:
 
     match current_state:
         State.WANDER:
-            state_timer = randf_range(0.8, 1.7)
+            state_timer = randf_range(0.3, 0.75)
             movement_target = _pick_random_patrol_point()
         State.PATROL:
             state_timer = 0.0
             if patrol_points.is_empty():
                 _build_patrol_points()
+            elif global_position.distance_to(patrol_points[patrol_index]) <= 8.0:
+                _advance_patrol_point()
             movement_target = patrol_points[patrol_index]
         State.ALERT:
-            state_timer = 0.5
+            state_timer = 0.3
             velocity = Vector2.ZERO
         State.CHASE:
             state_timer = 1.8

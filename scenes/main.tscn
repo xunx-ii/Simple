@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2"]
 [ext_resource type="FontFile" path="res://assets/fonts/vonwaon.ttf" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/ui/crosshair.tscn" id="4"]
+[ext_resource type="Script" path="res://scripts/ui/fog_of_war.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/damage_indicator.gd" id="6"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -26,6 +28,9 @@ wait_time = 1.1
 autostart = true
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="FogOverlay" type="ColorRect" parent="CanvasLayer"]
+script = ExtResource("5")
 
 [node name="ScoreLabel" type="Label" parent="CanvasLayer"]
 offset_left = 8.0
@@ -98,5 +103,8 @@ horizontal_alignment = 1
 text = ""
 theme_override_fonts/font = ExtResource("3")
 theme_override_font_sizes/font_size = 18
+
+[node name="DamageIndicators" type="Node2D" parent="CanvasLayer"]
+script = ExtResource("6")
 
 [node name="Crosshair" parent="CanvasLayer" instance=ExtResource("4")]
