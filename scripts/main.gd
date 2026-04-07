@@ -23,7 +23,6 @@ var navigation_rebuild_queued: bool = false
 var game_over: bool = false
 var is_shutting_down: bool = false
 
-@onready var canvas_layer: CanvasLayer = $CanvasLayer
 @onready var player = $Player
 @onready var covers: Node2D = $Covers
 @onready var navigation_region: NavigationRegion2D = $NavigationRegion2D
@@ -31,22 +30,9 @@ var is_shutting_down: bool = false
 @onready var bullets: Node2D = $Bullets
 @onready var hit_effects: Node2D = $HitEffects
 @onready var spawn_timer: Timer = $SpawnTimer
-@onready var score_label: Label = $CanvasLayer/ScoreLabel
-@onready var state_label: Label = $CanvasLayer/StateLabel
-@onready var restart_label: Label = $CanvasLayer/RestartLabel
-@onready var wave_label: Label = $CanvasLayer/WaveLabel
-@onready var dash_label: Label = $CanvasLayer/DashLabel
-@onready var dash_bar_fill: ColorRect = $CanvasLayer/DashBarFill
-@onready var banner_label: Label = $CanvasLayer/BannerLabel
-@onready var pause_overlay: Control = $CanvasLayer/PauseOverlay
-@onready var continue_button: Button = $CanvasLayer/PauseOverlay/PausePanel/PauseButtons/ContinueButton
-@onready var quit_button: Button = $CanvasLayer/PauseOverlay/PausePanel/PauseButtons/QuitButton
-@onready var fog_overlay: ColorRect = $CanvasLayer/FogOverlay
-@onready var damage_indicators: Node2D = $CanvasLayer/DamageIndicators
-@onready var crosshair: Node2D = $CanvasLayer/Crosshair
+@onready var ui_controller = $CanvasLayer
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("world_controller")
 	InputSetup.ensure_default_actions()
 	Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN
@@ -58,7 +44,7 @@ func _ready() -> void:
 	cover_manager.spawn_covers(Callable(self, "_on_cover_destroyed"))
 	_rebuild_navigation_region()
 	_configure_process_modes()
-	_setup_pause_menu()
+	_setup_ui()
 	_setup_player()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
@@ -68,18 +54,10 @@ func _ready() -> void:
 	queue_redraw()
 
 func _process(delta: float) -> void:
-	if game_over and Input.is_action_just_pressed("restart"):
-		var tree := get_tree()
-		if tree != null:
-			tree.reload_current_scene()
-
-	if not game_over and Input.is_action_just_pressed("ui_cancel"):
-		_set_pause_menu_visible(not get_tree().paused)
-
 	if get_tree().paused:
 		return
 
-	banner_label.text = wave_director.update_banner(delta, game_over)
+	wave_director.update_banner(delta, game_over)
 	_update_enemy_visibility()
 	_update_ui()
 
@@ -127,24 +105,13 @@ func _draw() -> void:
 
 	draw_rect(WORLD_RECT, Color(0.58, 0.62, 0.68, 1.0), false, 3.0)
 
-func _setup_pause_menu() -> void:
-	continue_button.text = "继续游戏"
-	quit_button.text = "退出游戏"
-	continue_button.pressed.connect(_on_continue_button_pressed)
-	quit_button.pressed.connect(_on_quit_button_pressed)
-	_set_pause_menu_visible(false)
+func _setup_ui() -> void:
+	ui_controller.restart_requested.connect(_on_restart_requested)
+	ui_controller.quit_requested.connect(_on_quit_requested)
 
 func _setup_player() -> void:
 	player.configure_arena(WORLD_RECT)
-
-	if fog_overlay != null and fog_overlay.has_method("setup"):
-		fog_overlay.setup(player)
-
-	if damage_indicators != null and damage_indicators.has_method("setup"):
-		damage_indicators.setup(player)
-
-	if crosshair != null and crosshair.has_method("setup"):
-		crosshair.setup(player)
+	ui_controller.setup(player)
 
 	player.shoot_requested.connect(_on_player_shoot_requested)
 	player.health_changed.connect(_on_player_health_changed)
@@ -187,12 +154,11 @@ func _on_player_health_changed(_current_health: int) -> void:
 	_update_ui()
 
 func _on_player_defeated() -> void:
-	_set_pause_menu_visible(false)
+	ui_controller.close_pause_menu()
 	game_over = true
 	spawn_timer.stop()
-	state_label.text = "Game Over"
-	restart_label.visible = true
 	_show_banner("GAME OVER", 999.0)
+	_update_ui()
 
 func _on_enemy_defeated() -> void:
 	wave_director.register_enemy_defeated()
@@ -210,23 +176,22 @@ func _on_cover_destroyed(cell: Vector2i) -> void:
 		_queue_navigation_rebuild()
 
 func _update_ui() -> void:
-	score_label.text = "HP: %d  SCORE: %d" % [player.current_health, wave_director.score]
-	wave_label.text = "WAVE %d" % wave_director.current_wave
-	dash_label.text = "DASH READY" if player.is_dash_ready() else "DASH %.1f" % player.get_dash_cooldown_remaining()
-
-	var dash_ratio: float = player.get_dash_ratio()
-	dash_bar_fill.size.x = 72.0 * dash_ratio
-	dash_bar_fill.color = Color(0.35, 0.87, 1.0, 1.0) if player.is_dash_ready() else Color(0.31, 0.67, 0.96, 1.0)
-
-	if game_over:
-		return
-
-	restart_label.visible = false
-	state_label.text = "WASD Move  SHIFT Dash\nMouse Aim  RMB Aim  LMB Shoot\n%s  ENEMY NAV AGENT" % player.get_weapon_name()
+	ui_controller.apply_hud(
+		{
+			"health": player.current_health,
+			"score": wave_director.score,
+			"wave": wave_director.current_wave,
+			"dash_ready": player.is_dash_ready(),
+			"dash_cooldown": player.get_dash_cooldown_remaining(),
+			"dash_ratio": player.get_dash_ratio(),
+			"weapon_name": player.get_weapon_name(),
+			"banner_text": wave_director.banner_text,
+			"game_over": game_over
+		}
+	)
 
 func _start_next_wave() -> void:
 	wave_director.start_next_wave(spawn_timer)
-	banner_label.text = wave_director.banner_text
 	_update_ui()
 
 func _on_wave_cleared() -> void:
@@ -236,7 +201,7 @@ func _on_wave_cleared() -> void:
 	if not wave_director.begin_wave_clear(player, spawn_timer):
 		return
 
-	banner_label.text = wave_director.banner_text
+	_update_ui()
 	var tree := get_tree()
 	if tree == null:
 		wave_director.cancel_wave_clear()
@@ -252,21 +217,18 @@ func _on_wave_cleared() -> void:
 
 func _show_banner(text: String, duration: float = WaveDirectorScript.DEFAULT_BANNER_TIME) -> void:
 	wave_director.set_banner(text, duration)
-	banner_label.text = wave_director.banner_text
+	_update_ui()
 
-func _on_continue_button_pressed() -> void:
-	_set_pause_menu_visible(false)
+func _on_restart_requested() -> void:
+	var tree := get_tree()
+	if tree != null:
+		tree.reload_current_scene()
 
-func _on_quit_button_pressed() -> void:
+func _on_quit_requested() -> void:
 	is_shutting_down = true
 	var tree := get_tree()
 	if tree != null:
 		tree.quit()
-
-func _set_pause_menu_visible(menu_open: bool) -> void:
-	pause_overlay.visible = menu_open
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if menu_open else Input.MOUSE_MODE_CONFINED_HIDDEN
-	get_tree().paused = menu_open
 
 func _configure_process_modes() -> void:
 	var pausable_nodes: Array[Node] = [
@@ -281,14 +243,6 @@ func _configure_process_modes() -> void:
 
 	for node in pausable_nodes:
 		node.process_mode = Node.PROCESS_MODE_PAUSABLE
-
-	canvas_layer.process_mode = Node.PROCESS_MODE_ALWAYS
-	fog_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	damage_indicators.process_mode = Node.PROCESS_MODE_ALWAYS
-	crosshair.process_mode = Node.PROCESS_MODE_ALWAYS
-	pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
-	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
 
 func _update_enemy_visibility() -> void:
 	if not is_instance_valid(player):
