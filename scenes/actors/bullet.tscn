@@ -1,20 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/actors/bullet.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/textures/placeholder.png" id="2"]
 
-[sub_resource type="CircleShape2D" id="1"]
-radius = 3.0
-
-[node name="Bullet" type="Area2D"]
+[node name="Bullet" type="Node2D"]
 script = ExtResource("1")
-collision_layer = 4
-collision_mask = 10
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-scale = Vector2(0.5, 0.5)
-texture = ExtResource("2")
-modulate = Color(1, 0.894118, 0.345098, 1)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("1")
+[node name="Trail" type="Line2D" parent="."]
+width = 1.5
+default_color = Color(1, 0.894118, 0.345098, 0.9)

@@ -12,6 +12,8 @@ position = Vector2(640, 360)
 
 [node name="Covers" type="Node2D" parent="."]
 
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+
 [node name="Enemies" type="Node2D" parent="."]
 
 [node name="Bullets" type="Node2D" parent="."]
