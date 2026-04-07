@@ -1,6 +1,8 @@
 extends Node2D
 
 const InputSetup = preload("res://scripts/systems/input_setup.gd")
+const WaveDirectorScript = preload("res://scripts/systems/wave_director.gd")
+const CoverManagerScript = preload("res://scripts/systems/cover_manager.gd")
 const RangedEnemyScene := preload("res://scenes/actors/enemy.tscn")
 const MeleeEnemyScene := preload("res://scenes/actors/enemy_melee.tscn")
 const BulletScene := preload("res://scenes/actors/bullet.tscn")
@@ -10,31 +12,16 @@ const HitSparkScene := preload("res://scenes/effects/hit_spark.tscn")
 const WORLD_SIZE := Vector2(1280.0, 720.0)
 const WORLD_RECT := Rect2(Vector2.ZERO, WORLD_SIZE)
 const TILE_SIZE := 16
-const MAX_SIMULTANEOUS_ENEMIES := 12
 const MIN_SPAWN_DISTANCE := 112.0
 const SPAWN_VIEW_MARGIN := 48.0
-const WAVE_BANNER_TIME := 1.8
 const NAVIGATION_MARGIN := 4.0
-const COVER_CLUSTER_COUNT := 18
-const COVER_CLUSTER_MIN_CELLS := 6
-const COVER_CLUSTER_MAX_CELLS := 18
-const COVER_CLUSTER_ATTEMPTS := 48
-const COVER_EDGE_MARGIN_CELLS := 3
-const COVER_PLAYER_SAFE_RADIUS := 120.0
 const COVER_COLOR := Color(0.494118, 0.529412, 0.568627, 1.0)
-const COVER_DIRECTIONS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
-const MELEE_SPAWN_RATIO := 0.8
 
-var active_cover_rects: Array = []
+var cover_manager
+var wave_director
 var navigation_rebuild_queued: bool = false
-var score: int = 0
 var game_over: bool = false
-var current_wave: int = 0
-var enemies_alive: int = 0
-var enemies_remaining_to_spawn: int = 0
-var banner_time_remaining: float = 0.0
 var is_shutting_down: bool = false
-var wave_clear_in_progress: bool = false
 
 @onready var canvas_layer: CanvasLayer = $CanvasLayer
 @onready var player = $Player
@@ -64,26 +51,15 @@ func _ready() -> void:
 	InputSetup.ensure_default_actions()
 	Input.mouse_mode = Input.MOUSE_MODE_CONFINED_HIDDEN
 	randomize()
-	_spawn_covers()
+
+	wave_director = WaveDirectorScript.new()
+	cover_manager = CoverManagerScript.new()
+	cover_manager.setup(covers, CoverScene, WORLD_RECT, TILE_SIZE, COVER_COLOR, player)
+	cover_manager.spawn_covers(Callable(self, "_on_cover_destroyed"))
 	_rebuild_navigation_region()
-
 	_configure_process_modes()
-	continue_button.text = "继续游戏"
-	quit_button.text = "退出游戏"
-	continue_button.pressed.connect(_on_continue_button_pressed)
-	quit_button.pressed.connect(_on_quit_button_pressed)
-	_set_pause_menu_visible(false)
-
-	player.configure_arena(WORLD_RECT)
-	if fog_overlay != null and fog_overlay.has_method("setup"):
-		fog_overlay.setup(player)
-	if damage_indicators != null and damage_indicators.has_method("setup"):
-		damage_indicators.setup(player)
-	if crosshair != null and crosshair.has_method("setup"):
-		crosshair.setup(player)
-	player.shoot_requested.connect(_on_player_shoot_requested)
-	player.health_changed.connect(_on_player_health_changed)
-	player.defeated.connect(_on_player_defeated)
+	_setup_pause_menu()
+	_setup_player()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
@@ -93,7 +69,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if game_over and Input.is_action_just_pressed("restart"):
-		get_tree().reload_current_scene()
+		var tree := get_tree()
+		if tree != null:
+			tree.reload_current_scene()
 
 	if not game_over and Input.is_action_just_pressed("ui_cancel"):
 		_set_pause_menu_visible(not get_tree().paused)
@@ -101,11 +79,7 @@ func _process(delta: float) -> void:
 	if get_tree().paused:
 		return
 
-	if banner_time_remaining > 0.0:
-		banner_time_remaining = max(banner_time_remaining - delta, 0.0)
-		if banner_time_remaining == 0.0 and not game_over:
-			banner_label.text = ""
-
+	banner_label.text = wave_director.update_banner(delta, game_over)
 	_update_enemy_visibility()
 	_update_ui()
 
@@ -153,27 +127,43 @@ func _draw() -> void:
 
 	draw_rect(WORLD_RECT, Color(0.58, 0.62, 0.68, 1.0), false, 3.0)
 
+func _setup_pause_menu() -> void:
+	continue_button.text = "继续游戏"
+	quit_button.text = "退出游戏"
+	continue_button.pressed.connect(_on_continue_button_pressed)
+	quit_button.pressed.connect(_on_quit_button_pressed)
+	_set_pause_menu_visible(false)
+
+func _setup_player() -> void:
+	player.configure_arena(WORLD_RECT)
+
+	if fog_overlay != null and fog_overlay.has_method("setup"):
+		fog_overlay.setup(player)
+
+	if damage_indicators != null and damage_indicators.has_method("setup"):
+		damage_indicators.setup(player)
+
+	if crosshair != null and crosshair.has_method("setup"):
+		crosshair.setup(player)
+
+	player.shoot_requested.connect(_on_player_shoot_requested)
+	player.health_changed.connect(_on_player_health_changed)
+	player.defeated.connect(_on_player_defeated)
+
 func _on_spawn_timer_timeout() -> void:
-	if game_over:
+	if not wave_director.should_spawn_enemy(game_over):
 		return
 
-	if enemies_remaining_to_spawn <= 0:
-		return
-
-	if enemies_alive >= MAX_SIMULTANEOUS_ENEMIES:
-		return
-
-	var spawn_melee_enemy := randf() < MELEE_SPAWN_RATIO
+	var spawn_melee_enemy: bool = wave_director.pick_enemy_type_is_melee()
 	var enemy_scene = MeleeEnemyScene if spawn_melee_enemy else RangedEnemyScene
 	var enemy = enemy_scene.instantiate()
 	enemy.global_position = _pick_spawn_position()
 	enemy.defeated.connect(_on_enemy_defeated)
 	enemy.tree_exited.connect(_on_enemy_tree_exited)
 	enemies.add_child(enemy)
-	enemy.setup(player, WORLD_RECT, _build_enemy_config(spawn_melee_enemy), self)
+	enemy.setup(player, WORLD_RECT, wave_director.build_enemy_config(spawn_melee_enemy), self)
 	enemy.visible = player.is_point_in_vision(enemy.global_position)
-	enemies_alive += 1
-	enemies_remaining_to_spawn -= 1
+	wave_director.register_enemy_spawned()
 
 func _on_player_shoot_requested(projectiles: Array) -> void:
 	if game_over:
@@ -202,43 +192,26 @@ func _on_player_defeated() -> void:
 	spawn_timer.stop()
 	state_label.text = "Game Over"
 	restart_label.visible = true
-	banner_label.text = "GAME OVER"
-	banner_time_remaining = 999.0
+	_show_banner("GAME OVER", 999.0)
 
 func _on_enemy_defeated() -> void:
-	score += 1
+	wave_director.register_enemy_defeated()
 	_update_ui()
 
 func _on_enemy_tree_exited() -> void:
 	if is_shutting_down or not is_inside_tree():
 		return
 
-	enemies_alive = max(enemies_alive - 1, 0)
-
-	if game_over:
-		return
-
-	if enemies_alive == 0 and enemies_remaining_to_spawn == 0 and not wave_clear_in_progress:
+	if wave_director.register_enemy_exited(game_over):
 		_on_wave_cleared()
 
 func _on_cover_destroyed(cell: Vector2i) -> void:
-	var world_rect := _cell_to_world_rect(cell)
-	var remove_index := -1
-
-	for index in range(active_cover_rects.size()):
-		var cover_rect: Rect2 = active_cover_rects[index]
-		if cover_rect.position.is_equal_approx(world_rect.position) and cover_rect.size.is_equal_approx(world_rect.size):
-			remove_index = index
-			break
-
-	if remove_index >= 0:
-		active_cover_rects.remove_at(remove_index)
-
-	_queue_navigation_rebuild()
+	if cover_manager.handle_cover_destroyed(cell):
+		_queue_navigation_rebuild()
 
 func _update_ui() -> void:
-	score_label.text = "HP: %d  SCORE: %d" % [player.current_health, score]
-	wave_label.text = "WAVE %d" % current_wave
+	score_label.text = "HP: %d  SCORE: %d" % [player.current_health, wave_director.score]
+	wave_label.text = "WAVE %d" % wave_director.current_wave
 	dash_label.text = "DASH READY" if player.is_dash_ready() else "DASH %.1f" % player.get_dash_cooldown_remaining()
 
 	var dash_ratio: float = player.get_dash_ratio()
@@ -252,39 +225,34 @@ func _update_ui() -> void:
 	state_label.text = "WASD Move  SHIFT Dash\nMouse Aim  RMB Aim  LMB Shoot\n%s  ENEMY NAV AGENT" % player.get_weapon_name()
 
 func _start_next_wave() -> void:
-	wave_clear_in_progress = false
-	current_wave += 1
-	enemies_remaining_to_spawn = 4 + current_wave * 2
-	enemies_alive = 0
-	spawn_timer.wait_time = max(1.0 - float(current_wave - 1) * 0.08, 0.4)
-	spawn_timer.start()
-	_show_banner("WAVE %d" % current_wave)
+	wave_director.start_next_wave(spawn_timer)
+	banner_label.text = wave_director.banner_text
 	_update_ui()
 
 func _on_wave_cleared() -> void:
-	if is_shutting_down or not is_inside_tree() or wave_clear_in_progress:
+	if is_shutting_down or not is_inside_tree():
 		return
 
-	wave_clear_in_progress = true
-	player.recover(1)
-	spawn_timer.stop()
-	_show_banner("WAVE %d CLEAR" % current_wave)
+	if not wave_director.begin_wave_clear(player, spawn_timer):
+		return
+
+	banner_label.text = wave_director.banner_text
 	var tree := get_tree()
 	if tree == null:
-		wave_clear_in_progress = false
+		wave_director.cancel_wave_clear()
 		return
 
 	await tree.create_timer(1.2, false).timeout
 
 	if is_shutting_down or not is_inside_tree() or game_over:
-		wave_clear_in_progress = false
+		wave_director.cancel_wave_clear()
 		return
 
 	_start_next_wave()
 
-func _show_banner(text: String) -> void:
-	banner_label.text = text
-	banner_time_remaining = WAVE_BANNER_TIME
+func _show_banner(text: String, duration: float = WaveDirectorScript.DEFAULT_BANNER_TIME) -> void:
+	wave_director.set_banner(text, duration)
+	banner_label.text = wave_director.banner_text
 
 func _on_continue_button_pressed() -> void:
 	_set_pause_menu_visible(false)
@@ -322,30 +290,6 @@ func _configure_process_modes() -> void:
 	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
 
-func _build_enemy_config(is_melee_enemy: bool) -> Dictionary:
-	if is_melee_enemy:
-		return {
-			"move_speed": 43.0 + current_wave * 3.0,
-			"max_health": 1 + floori(current_wave / 3.0),
-			"touch_damage": 1,
-			"attack_cooldown": max(0.72 - current_wave * 0.025, 0.32),
-			"sight_range": 232.0 + current_wave * 8.0,
-			"attack_range": 22.0,
-			"patrol_radius": 168.0 + current_wave * 10.0,
-			"chase_speed_multiplier": 1.42 + current_wave * 0.02
-		}
-
-	return {
-		"move_speed": 31.0 + current_wave * 2.2,
-		"max_health": 1 + floori(current_wave / 2.0),
-		"touch_damage": 1,
-		"attack_cooldown": max(1.15 - current_wave * 0.04, 0.6),
-		"sight_range": 224.0 + current_wave * 8.0,
-		"attack_range": 96.0 + current_wave * 3.0,
-		"patrol_radius": 148.0 + current_wave * 8.0,
-		"chase_speed_multiplier": 1.16 + current_wave * 0.015
-	}
-
 func _update_enemy_visibility() -> void:
 	if not is_instance_valid(player):
 		return
@@ -372,13 +316,7 @@ func spawn_hit_spark(impact_position: Vector2, normal: Vector2, config: Dictiona
 		hit_spark.setup(normal, config)
 
 func find_walkable_point_near(origin: Vector2, radius: float) -> Vector2:
-	for _attempt in range(24):
-		var candidate := origin + Vector2(randf_range(-radius, radius), randf_range(-radius, radius))
-		candidate = _clamp_point_to_world(candidate)
-		if _is_point_walkable(candidate):
-			return candidate
-
-	return _clamp_point_to_world(origin)
+	return cover_manager.find_walkable_point_near(origin, radius)
 
 func _pick_spawn_position() -> Vector2:
 	var view_half_size := get_viewport_rect().size * 0.5
@@ -408,105 +346,6 @@ func _pick_spawn_position() -> Vector2:
 			return candidate
 
 	return find_walkable_point_near(player.global_position, horizontal_span + 64.0)
-
-func _spawn_covers() -> void:
-	active_cover_rects.clear()
-	for existing_cover in covers.get_children():
-		existing_cover.queue_free()
-
-	var occupied_cells := {}
-
-	for _cluster_index in range(COVER_CLUSTER_COUNT):
-		var cluster_cells := _generate_cover_cluster(occupied_cells)
-		if cluster_cells.is_empty():
-			continue
-
-		for cell_variant in cluster_cells:
-			var cell: Vector2i = cell_variant
-			occupied_cells[cell] = true
-			_spawn_cover_tile(cell, COVER_COLOR)
-
-func _spawn_cover_tile(cell: Vector2i, tint: Color) -> void:
-	var cover = CoverScene.instantiate()
-	cover.global_position = _cell_to_world_center(cell)
-	covers.add_child(cover)
-	cover.configure(TILE_SIZE, tint, cell)
-	cover.destroyed.connect(_on_cover_destroyed)
-	active_cover_rects.append(_cell_to_world_rect(cell))
-
-func _generate_cover_cluster(occupied_cells: Dictionary) -> Array:
-	for _attempt in range(COVER_CLUSTER_ATTEMPTS):
-		var origin := _pick_cover_origin_cell(occupied_cells)
-		if origin == Vector2i(-1, -1):
-			break
-
-		var target_size := randi_range(COVER_CLUSTER_MIN_CELLS, COVER_CLUSTER_MAX_CELLS)
-		var cluster_cells: Array = [origin]
-		var local_cells := {origin: true}
-		var frontier: Array = [origin]
-
-		while cluster_cells.size() < target_size and not frontier.is_empty():
-			var frontier_index := randi_range(0, frontier.size() - 1)
-			var base_cell: Vector2i = frontier[frontier_index]
-			var directions := COVER_DIRECTIONS.duplicate()
-			directions.shuffle()
-
-			var expanded := false
-			for direction_variant in directions:
-				var direction: Vector2i = direction_variant
-				var candidate := base_cell + direction
-				if not _can_use_cover_cell(candidate, occupied_cells, local_cells):
-					continue
-
-				cluster_cells.append(candidate)
-				local_cells[candidate] = true
-				frontier.append(candidate)
-				expanded = true
-				break
-
-			if not expanded:
-				frontier.remove_at(frontier_index)
-
-		if cluster_cells.size() >= COVER_CLUSTER_MIN_CELLS:
-			return cluster_cells
-
-	return []
-
-func _pick_cover_origin_cell(occupied_cells: Dictionary) -> Vector2i:
-	var world_cells := _get_world_cell_size()
-	var min_x := COVER_EDGE_MARGIN_CELLS
-	var max_x := world_cells.x - COVER_EDGE_MARGIN_CELLS - 1
-	var min_y := COVER_EDGE_MARGIN_CELLS
-	var max_y := world_cells.y - COVER_EDGE_MARGIN_CELLS - 1
-
-	for _attempt in range(72):
-		var candidate := Vector2i(randi_range(min_x, max_x), randi_range(min_y, max_y))
-		if _can_use_cover_cell(candidate, occupied_cells):
-			return candidate
-
-	return Vector2i(-1, -1)
-
-func _can_use_cover_cell(cell: Vector2i, occupied_cells: Dictionary, local_cells: Dictionary = {}) -> bool:
-	var world_cells := _get_world_cell_size()
-	if cell.x < COVER_EDGE_MARGIN_CELLS or cell.x >= world_cells.x - COVER_EDGE_MARGIN_CELLS:
-		return false
-
-	if cell.y < COVER_EDGE_MARGIN_CELLS or cell.y >= world_cells.y - COVER_EDGE_MARGIN_CELLS:
-		return false
-
-	if occupied_cells.has(cell) or local_cells.has(cell):
-		return false
-
-	if _cell_to_world_center(cell).distance_to(player.global_position) < COVER_PLAYER_SAFE_RADIUS:
-		return false
-
-	for direction_variant in COVER_DIRECTIONS:
-		var direction: Vector2i = direction_variant
-		var neighbor := cell + direction
-		if occupied_cells.has(neighbor) and not local_cells.has(neighbor):
-			return false
-
-	return true
 
 func _rebuild_navigation_region() -> void:
 	var navigation_polygon := NavigationPolygon.new()
@@ -545,24 +384,8 @@ func _build_outline_from_rect(rect: Rect2) -> PackedVector2Array:
 
 	return PackedVector2Array([top_left, bottom_left, bottom_right, top_right])
 
-func _cell_to_world_center(cell: Vector2i) -> Vector2:
-	return (Vector2(cell) + Vector2.ONE * 0.5) * TILE_SIZE
-
-func _cell_to_world_rect(cell: Vector2i) -> Rect2:
-	return Rect2(Vector2(cell) * TILE_SIZE, Vector2.ONE * TILE_SIZE)
-
-func _get_world_cell_size() -> Vector2i:
-	return Vector2i(int(WORLD_SIZE.x / TILE_SIZE), int(WORLD_SIZE.y / TILE_SIZE))
-
 func _is_point_walkable(point: Vector2) -> bool:
-	if not WORLD_RECT.has_point(point):
-		return false
-
-	for cover_rect in active_cover_rects:
-		if cover_rect.has_point(point):
-			return false
-
-	return true
+	return cover_manager.is_point_walkable(point)
 
 func _clamp_point_to_world(point: Vector2) -> Vector2:
-	return point.clamp(WORLD_RECT.position + Vector2.ONE * 8.0, WORLD_RECT.end - Vector2.ONE * 8.0)
+	return cover_manager.clamp_point_to_world(point)
