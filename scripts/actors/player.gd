@@ -23,6 +23,7 @@ const CAMERA_SHAKE_DECAY := 26.0
 const MAX_CAMERA_SHAKE := 6.0
 const MAX_SPRITE_KICK := 5.0
 const VISION_CONE_DEGREES := 120.0
+const CAMERA_WORLD_VIEW_RATIO := 0.5
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(320.0, 180.0))
 var aim_direction: Vector2 = Vector2.RIGHT
@@ -44,6 +45,10 @@ func _ready() -> void:
     add_to_group("player")
     sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     current_weapon = MachineGunWeaponScript.new()
+    var viewport := get_viewport()
+    if viewport != null:
+        viewport.size_changed.connect(_on_viewport_size_changed)
+    _update_camera_view()
     health_changed.emit(current_health)
 
 func _physics_process(delta: float) -> void:
@@ -80,13 +85,7 @@ func _physics_process(delta: float) -> void:
 func configure_arena(rect: Rect2) -> void:
     arena_rect = rect
     _clamp_to_arena()
-
-    camera.limit_left = int(rect.position.x)
-    camera.limit_top = int(rect.position.y)
-    camera.limit_right = int(rect.end.x)
-    camera.limit_bottom = int(rect.end.y)
-    camera.offset = Vector2.ZERO
-    camera.reset_smoothing()
+    _update_camera_view()
 
 func take_hit(source_position: Vector2, damage: int = 1) -> void:
     if is_dead or hit_invulnerability_remaining > 0.0 or dash_time_remaining > 0.0:
@@ -176,6 +175,17 @@ func get_view_direction() -> Vector2:
 func get_vision_cone_degrees() -> float:
     return VISION_CONE_DEGREES
 
+func get_camera_visible_world_size() -> Vector2:
+    var viewport_size := get_viewport_rect().size
+    var safe_zoom := Vector2(
+        max(camera.zoom.x, 0.001),
+        max(camera.zoom.y, 0.001)
+    )
+    return Vector2(
+        viewport_size.x / safe_zoom.x,
+        viewport_size.y / safe_zoom.y
+    )
+
 func is_point_in_vision(world_point: Vector2) -> bool:
     var to_point := world_point - global_position
     if to_point.length_squared() <= 1.0:
@@ -229,3 +239,29 @@ func _update_fire_feedback(delta: float) -> void:
         randf_range(-camera_shake_strength, camera_shake_strength),
         randf_range(-camera_shake_strength, camera_shake_strength)
     )
+
+func _on_viewport_size_changed() -> void:
+    _update_camera_view()
+
+func _update_camera_view() -> void:
+    if camera == null:
+        return
+
+    var viewport_size := get_viewport_rect().size
+    if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+        return
+
+    var zoom_factor := minf(
+        viewport_size.x / max(arena_rect.size.x, 1.0),
+        viewport_size.y / max(arena_rect.size.y, 1.0)
+    )
+    zoom_factor = maxf(zoom_factor, 0.001)
+    zoom_factor /= CAMERA_WORLD_VIEW_RATIO
+
+    camera.zoom = Vector2.ONE * zoom_factor
+    camera.limit_left = int(arena_rect.position.x)
+    camera.limit_top = int(arena_rect.position.y)
+    camera.limit_right = int(arena_rect.end.x)
+    camera.limit_bottom = int(arena_rect.end.y)
+    camera.offset = Vector2.ZERO
+    camera.reset_smoothing()

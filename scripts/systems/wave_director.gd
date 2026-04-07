@@ -83,7 +83,7 @@ func build_enemy_config(is_melee_enemy: bool) -> Dictionary:
     if is_melee_enemy:
         return {
             "move_speed": 43.0 + current_wave * 3.0,
-            "max_health": 1 + floori(current_wave / 3.0),
+            "max_health": max(2, 1 + floori(current_wave / 3.0)),
             "touch_damage": 1,
             "attack_cooldown": max(0.72 - current_wave * 0.025, 0.32),
             "sight_range": 232.0 + current_wave * 8.0,
@@ -94,7 +94,7 @@ func build_enemy_config(is_melee_enemy: bool) -> Dictionary:
 
     return {
         "move_speed": 31.0 + current_wave * 2.2,
-        "max_health": 1 + floori(current_wave / 2.0),
+        "max_health": max(2, 1 + floori(current_wave / 2.0)),
         "touch_damage": 1,
         "attack_cooldown": max(1.15 - current_wave * 0.04, 0.6),
         "sight_range": 224.0 + current_wave * 8.0,

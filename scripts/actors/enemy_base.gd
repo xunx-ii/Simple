@@ -48,6 +48,7 @@ var target_locked: bool = false
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var navigation_agent: NavigationAgent2D = $NavigationAgent2D
 @onready var attack_component: Node = get_node_or_null("AttackComponent")
+@onready var health_bar: TextureProgressBar = $HealthBar
 
 func _ready() -> void:
     add_to_group("enemies")
@@ -63,6 +64,7 @@ func _ready() -> void:
 
     current_health = max_health
     _sync_size_with_health()
+    _update_health_bar()
 
     if not state_initialized:
         _enter_state(State.WANDER)
@@ -121,6 +123,7 @@ func setup(target_node: CharacterBody2D, rect: Rect2, config: Dictionary = {}, w
 
     if is_node_ready():
         _sync_size_with_health()
+        _update_health_bar()
         _enter_state(State.WANDER)
 
 func take_damage(amount: int, from_direction: Vector2) -> void:
@@ -128,6 +131,7 @@ func take_damage(amount: int, from_direction: Vector2) -> void:
         return
 
     current_health = max(current_health - amount, 0)
+    _update_health_bar()
     hit_flash_remaining = 0.12
 
     if from_direction != Vector2.ZERO:
@@ -384,6 +388,21 @@ func _sync_size_with_health() -> void:
     var visual_scale: float = 1.0 + float(max_health - 1) * 0.12
     sprite.scale = Vector2.ONE * visual_scale
     sprite.rotation = 0.0
+    _update_health_bar_layout(visual_scale)
+
+func _update_health_bar() -> void:
+    if health_bar == null:
+        return
+
+    health_bar.max_value = max(max_health, 1)
+    health_bar.value = current_health
+    health_bar.visible = current_health > 0
+
+func _update_health_bar_layout(visual_scale: float) -> void:
+    if health_bar == null:
+        return
+
+    health_bar.position = Vector2(-16.0, -24.0 - (visual_scale - 1.0) * 12.0)
 
 func _update_facing(direction: Vector2) -> void:
     if direction.length_squared() <= 4.0:

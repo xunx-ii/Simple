@@ -261,7 +261,11 @@ func find_walkable_point_near(origin: Vector2, radius: float) -> Vector2:
 	return cover_manager.find_walkable_point_near(origin, radius)
 
 func _pick_spawn_position() -> Vector2:
-	var view_half_size := get_viewport_rect().size * 0.5
+	var visible_world_size := get_viewport_rect().size
+	if is_instance_valid(player) and player.has_method("get_camera_visible_world_size"):
+		visible_world_size = player.get_camera_visible_world_size()
+
+	var view_half_size := visible_world_size * 0.5
 	var horizontal_span := view_half_size.x + SPAWN_VIEW_MARGIN
 	var vertical_span := view_half_size.y + SPAWN_VIEW_MARGIN
 

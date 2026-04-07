@@ -1,11 +1,20 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/actors/enemy.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/textures/placeholder.png" id="2"]
 [ext_resource type="Script" path="res://scripts/actors/attacks/enemy_ranged_attack.gd" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/tilemap/interface_tilemap.png" id="4"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(12, 12)
+
+[sub_resource type="AtlasTexture" id="2"]
+atlas = ExtResource("4")
+region = Rect2(208, 96, 64, 16)
+
+[sub_resource type="AtlasTexture" id="3"]
+atlas = ExtResource("4")
+region = Rect2(208, 112, 64, 16)
 
 [node name="Enemy" type="CharacterBody2D"]
 script = ExtResource("1")
@@ -22,6 +31,18 @@ shape = SubResource("1")
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 path_desired_distance = 4.0
 target_desired_distance = 6.0
+
+[node name="HealthBar" type="TextureProgressBar" parent="."]
+z_index = 10
+offset_left = -16.0
+offset_top = -24.0
+offset_right = 48.0
+offset_bottom = -8.0
+scale = Vector2(0.5, 0.5)
+mouse_filter = 2
+show_percentage = false
+texture_under = SubResource("2")
+texture_progress = SubResource("3")
 
 [node name="AttackComponent" type="Node" parent="."]
 script = ExtResource("3")
