@@ -116,6 +116,7 @@ func setup(target_node: CharacterBody2D, rect: Rect2, config: Dictionary = {}, w
     chase_speed_multiplier = config.get("chase_speed_multiplier", DEFAULT_CHASE_SPEED_MULTIPLIER)
     patrol_points.clear()
     _build_patrol_points()
+    _update_facing(movement_target - global_position)
 
     if is_node_ready():
         _sync_size_with_health()
@@ -260,8 +261,15 @@ func _set_navigation_target(destination: Vector2) -> void:
 
 func _build_patrol_points() -> void:
     patrol_points.clear()
-    for _index in range(PATROL_POINT_COUNT):
-        patrol_points.append(_pick_random_patrol_point())
+    var remaining_attempts := PATROL_POINT_COUNT * 6
+    while patrol_points.size() < PATROL_POINT_COUNT and remaining_attempts > 0:
+        remaining_attempts -= 1
+        var patrol_point := _pick_random_patrol_point()
+        if _is_patrol_point_distinct_enough(patrol_point):
+            patrol_points.append(patrol_point)
+
+    while patrol_points.size() < PATROL_POINT_COUNT:
+        patrol_points.append(home_position)
 
     patrol_index = 0
     movement_target = patrol_points[0]
@@ -308,6 +316,7 @@ func _enter_state(new_state: int) -> void:
         State.WANDER:
             state_timer = randf_range(0.3, 0.75)
             movement_target = _pick_random_patrol_point()
+            _update_facing(movement_target - global_position)
         State.PATROL:
             state_timer = 0.0
             if patrol_points.is_empty():
@@ -315,14 +324,21 @@ func _enter_state(new_state: int) -> void:
             elif global_position.distance_to(patrol_points[patrol_index]) <= 8.0:
                 _advance_patrol_point()
             movement_target = patrol_points[patrol_index]
+            _update_facing(movement_target - global_position)
         State.ALERT:
             state_timer = 0.3
             velocity = Vector2.ZERO
+            if is_instance_valid(target):
+                _update_facing(target.global_position - global_position)
         State.CHASE:
             state_timer = _get_chase_memory_time()
+            if is_instance_valid(target):
+                _update_facing(target.global_position - global_position)
         State.ATTACK:
             state_timer = 0.0
             velocity = Vector2.ZERO
+            if is_instance_valid(target):
+                _update_facing(target.global_position - global_position)
 
 func _can_see_target(distance_to_target: float) -> bool:
     if distance_to_target > sight_range:
@@ -375,6 +391,14 @@ func _update_facing(direction: Vector2) -> void:
     facing_direction = direction.normalized()
     sprite.flip_h = facing_direction.x < -0.1
     sprite.rotation = 0.0
+
+func _is_patrol_point_distinct_enough(candidate: Vector2) -> bool:
+    for patrol_point_variant in patrol_points:
+        var patrol_point: Vector2 = patrol_point_variant
+        if patrol_point.distance_to(candidate) < 24.0:
+            return false
+
+    return true
 
 func _is_attack_available(can_see_target: bool, distance_to_target: float) -> bool:
     if distance_to_target > attack_range:

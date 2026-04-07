@@ -41,8 +41,4 @@ func _process(_delta: float) -> void:
     outer.modulate = tint
 
 func _load_texture(resource_path: String) -> Texture2D:
-    var image: Image = Image.load_from_file(ProjectSettings.globalize_path(resource_path))
-    if image == null or image.is_empty():
-        return null
-
-    return ImageTexture.create_from_image(image)
+    return load(resource_path) as Texture2D
