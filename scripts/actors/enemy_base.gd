@@ -47,6 +47,7 @@ var target_locked: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var navigation_agent: NavigationAgent2D = $NavigationAgent2D
+@onready var attack_component: Node = get_node_or_null("AttackComponent")
 
 func _ready() -> void:
     add_to_group("enemies")
@@ -422,6 +423,9 @@ func _get_chase_memory_time() -> float:
     return 1.6
 
 func _get_attack_release_margin() -> float:
+    if attack_component != null and attack_component.has_method("get_attack_release_margin"):
+        return attack_component.get_attack_release_margin(self)
+
     return 10.0
 
 func _get_chase_destination(target_visible: bool, _can_engage_target: bool) -> Vector2:
@@ -431,13 +435,17 @@ func _has_persistent_target() -> bool:
     return target_locked
 
 func _can_attack_without_sight() -> bool:
+    if attack_component != null and attack_component.has_method("can_attack_without_sight"):
+        return attack_component.can_attack_without_sight(self)
+
     return false
 
 func _on_target_spotted() -> void:
     pass
 
 func _perform_attack() -> void:
-    pass
+    if attack_component != null and attack_component.has_method("perform_attack"):
+        attack_component.perform_attack(self)
 
 func _get_state_color(state: int) -> Color:
     match state:

@@ -25,16 +25,6 @@ func _get_damage_reaction_state() -> int:
 func _get_chase_destination(_target_visible: bool, _can_engage_target: bool) -> Vector2:
     return target.global_position if is_instance_valid(target) else last_seen_position
 
-func _perform_attack() -> void:
-    if not is_instance_valid(target):
-        return
-
-    if global_position.distance_to(target.global_position) > attack_range + 6.0:
-        return
-
-    if target.has_method("take_hit"):
-        target.call("take_hit", global_position, touch_damage)
-
 func _get_state_color(state: int) -> Color:
     match state:
         State.WANDER:

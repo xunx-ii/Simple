@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/actors/enemy_melee.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/textures/placeholder.png" id="2"]
+[ext_resource type="Script" path="res://scripts/actors/attacks/enemy_melee_attack.gd" id="3"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(12, 12)
@@ -21,3 +22,6 @@ shape = SubResource("1")
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
 path_desired_distance = 4.0
 target_desired_distance = 6.0
+
+[node name="AttackComponent" type="Node" parent="."]
+script = ExtResource("3")
