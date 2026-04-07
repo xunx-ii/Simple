@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://uq7hkrarcdhx"
-path="res://.godot/imported/瞄准中心点.png-b3908db4fab541274aad2b4c6d03d245.ctex"
+uid="uid://b1xirob3jiqvg"
+path="res://.godot/imported/crosshair_outer_expand.png-eb5a015dbb88ab8b1132b66ca2d96da7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/image/瞄准中心点.png"
-dest_files=["res://.godot/imported/瞄准中心点.png-b3908db4fab541274aad2b4c6d03d245.ctex"]
+source_file="res://assets/textures/image/crosshair_outer_expand.png"
+dest_files=["res://.godot/imported/crosshair_outer_expand.png-eb5a015dbb88ab8b1132b66ca2d96da7.ctex"]
 
 [params]
 

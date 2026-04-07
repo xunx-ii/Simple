@@ -6,6 +6,7 @@ uniform vec2 player_screen_pos = vec2(160.0, 90.0);
 uniform vec2 view_direction = vec2(1.0, 0.0);
 uniform float cone_angle_radians = 2.094395;
 uniform float inner_radius = 24.0;
+uniform float front_clear_radius = 52.0;
 uniform float edge_softness = 28.0;
 uniform vec4 overlay_color : source_color = vec4(0.015686, 0.019608, 0.031373, 0.86);
 
@@ -27,9 +28,13 @@ void fragment() {
 		vec2 direction_to_pixel = normalize(delta);
 		float cone_cos = cos(cone_angle_radians * 0.5);
 		float facing = dot(forward, direction_to_pixel);
-		float cone_mask = smoothstep(cone_cos - 0.08, cone_cos + 0.02, facing);
-		float radius_mask = smoothstep(inner_radius, inner_radius + edge_softness, distance_to_player);
-		overlay_alpha *= 1.0 - (cone_mask * radius_mask);
+		if (facing >= cone_cos && distance_to_player <= front_clear_radius) {
+			overlay_alpha = 0.0;
+		} else {
+			float cone_mask = smoothstep(cone_cos - 0.08, cone_cos + 0.02, facing);
+			float radius_mask = smoothstep(inner_radius, inner_radius + edge_softness, distance_to_player);
+			overlay_alpha *= 1.0 - (cone_mask * radius_mask);
+		}
 	}
 
 	COLOR = vec4(overlay_color.rgb, overlay_alpha);

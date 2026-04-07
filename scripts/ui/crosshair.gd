@@ -1,8 +1,8 @@
 class_name CrosshairUI
 extends Node2D
 
-const CENTER_TEXTURE_PATH := "res://assets/textures/image/瞄准中心点.png"
-const OUTER_TEXTURE_PATH := "res://assets/textures/image/瞄准周围可扩展空心十字.png"
+const CENTER_TEXTURE_PATH := "res://assets/textures/image/crosshair_center.png"
+const OUTER_TEXTURE_PATH := "res://assets/textures/image/crosshair_outer_expand.png"
 const DEFAULT_OUTER_SCALE := 1.0
 const AIM_TINT := Color(0.82, 1.0, 0.88, 1.0)
 const DEFAULT_TINT := Color(1.0, 1.0, 1.0, 1.0)

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b1xirob3jiqvg"
-path="res://.godot/imported/瞄准周围可扩展空心十字.png-fa2096d14d17453bb520070804e91987.ctex"
+uid="uid://uq7hkrarcdhx"
+path="res://.godot/imported/crosshair_center.png-ebb1c0d82e3f912b7494067769ddc4ae.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/image/瞄准周围可扩展空心十字.png"
-dest_files=["res://.godot/imported/瞄准周围可扩展空心十字.png-fa2096d14d17453bb520070804e91987.ctex"]
+source_file="res://assets/textures/image/crosshair_center.png"
+dest_files=["res://.godot/imported/crosshair_center.png-ebb1c0d82e3f912b7494067769ddc4ae.ctex"]
 
 [params]
 

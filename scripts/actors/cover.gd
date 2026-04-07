@@ -8,7 +8,7 @@ const COLLISION_INSET := 4.0
 
 var tile_size: int = 16
 var cell: Vector2i = Vector2i.ZERO
-var base_color: Color = Color(0.545098, 0.619608, 0.431373, 1.0)
+var base_color: Color = Color(0.494118, 0.529412, 0.568627, 1.0)
 var max_health: int = 1
 var current_health: int = 1
 var hit_flash_remaining: float = 0.0

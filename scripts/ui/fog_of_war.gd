@@ -4,6 +4,7 @@ extends ColorRect
 const FogShader := preload("res://shaders/fog_of_war.gdshader")
 const OVERLAY_COLOR := Color(0.015686, 0.019608, 0.031373, 0.86)
 const INNER_RADIUS := 24.0
+const FRONT_CLEAR_RADIUS := 52.0
 const EDGE_SOFTNESS := 28.0
 
 var player: Node2D
@@ -64,5 +65,6 @@ func _update_shader() -> void:
 	shader_material.set_shader_parameter("view_direction", view_direction.normalized())
 	shader_material.set_shader_parameter("cone_angle_radians", deg_to_rad(cone_angle_degrees))
 	shader_material.set_shader_parameter("inner_radius", INNER_RADIUS)
+	shader_material.set_shader_parameter("front_clear_radius", FRONT_CLEAR_RADIUS)
 	shader_material.set_shader_parameter("edge_softness", EDGE_SOFTNESS)
 	shader_material.set_shader_parameter("overlay_color", OVERLAY_COLOR)

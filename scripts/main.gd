@@ -1,7 +1,8 @@
 extends Node2D
 
 const InputSetup = preload("res://scripts/systems/input_setup.gd")
-const EnemyScene := preload("res://scenes/actors/enemy.tscn")
+const RangedEnemyScene := preload("res://scenes/actors/enemy.tscn")
+const MeleeEnemyScene := preload("res://scenes/actors/enemy_melee.tscn")
 const BulletScene := preload("res://scenes/actors/bullet.tscn")
 const CoverScene := preload("res://scenes/actors/cover.tscn")
 const HitSparkScene := preload("res://scenes/effects/hit_spark.tscn")
@@ -13,21 +14,16 @@ const MAX_SIMULTANEOUS_ENEMIES := 12
 const MIN_SPAWN_DISTANCE := 112.0
 const SPAWN_VIEW_MARGIN := 48.0
 const WAVE_BANNER_TIME := 1.8
-const NAVIGATION_MARGIN := 10.0
+const NAVIGATION_MARGIN := 4.0
 const COVER_CLUSTER_COUNT := 18
 const COVER_CLUSTER_MIN_CELLS := 6
 const COVER_CLUSTER_MAX_CELLS := 18
 const COVER_CLUSTER_ATTEMPTS := 48
 const COVER_EDGE_MARGIN_CELLS := 3
 const COVER_PLAYER_SAFE_RADIUS := 120.0
-const COVER_COLORS := [
-	Color(0.478431, 0.572549, 0.423529, 1.0),
-	Color(0.65098, 0.552941, 0.380392, 1.0),
-	Color(0.564706, 0.494118, 0.658824, 1.0),
-	Color(0.427451, 0.603922, 0.647059, 1.0),
-	Color(0.74902, 0.447059, 0.4, 1.0)
-]
+const COVER_COLOR := Color(0.494118, 0.529412, 0.568627, 1.0)
 const COVER_DIRECTIONS := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+const MELEE_SPAWN_RATIO := 0.8
 
 var active_cover_rects: Array = []
 var navigation_rebuild_queued: bool = false
@@ -146,12 +142,14 @@ func _on_spawn_timer_timeout() -> void:
 	if enemies_alive >= MAX_SIMULTANEOUS_ENEMIES:
 		return
 
-	var enemy = EnemyScene.instantiate()
+	var spawn_melee_enemy := randf() < MELEE_SPAWN_RATIO
+	var enemy_scene = MeleeEnemyScene if spawn_melee_enemy else RangedEnemyScene
+	var enemy = enemy_scene.instantiate()
 	enemy.global_position = _pick_spawn_position()
 	enemy.defeated.connect(_on_enemy_defeated)
 	enemy.tree_exited.connect(_on_enemy_tree_exited)
 	enemies.add_child(enemy)
-	enemy.setup(player, WORLD_RECT, _build_enemy_config(), self)
+	enemy.setup(player, WORLD_RECT, _build_enemy_config(spawn_melee_enemy), self)
 	enemy.visible = player.is_point_in_vision(enemy.global_position)
 	enemies_alive += 1
 	enemies_remaining_to_spawn -= 1
@@ -252,16 +250,28 @@ func _show_banner(text: String) -> void:
 	banner_label.text = text
 	banner_time_remaining = WAVE_BANNER_TIME
 
-func _build_enemy_config() -> Dictionary:
+func _build_enemy_config(is_melee_enemy: bool) -> Dictionary:
+	if is_melee_enemy:
+		return {
+			"move_speed": 43.0 + current_wave * 3.0,
+			"max_health": 1 + floori(current_wave / 3.0),
+			"touch_damage": 1,
+			"attack_cooldown": max(0.72 - current_wave * 0.025, 0.32),
+			"sight_range": 232.0 + current_wave * 8.0,
+			"attack_range": 22.0,
+			"patrol_radius": 168.0 + current_wave * 10.0,
+			"chase_speed_multiplier": 1.42 + current_wave * 0.02
+		}
+
 	return {
-		"move_speed": 34.0 + current_wave * 3.0,
+		"move_speed": 31.0 + current_wave * 2.2,
 		"max_health": 1 + floori(current_wave / 2.0),
 		"touch_damage": 1,
-		"attack_cooldown": max(1.05 - current_wave * 0.04, 0.5),
+		"attack_cooldown": max(1.15 - current_wave * 0.04, 0.6),
 		"sight_range": 224.0 + current_wave * 8.0,
-		"attack_range": 108.0 + current_wave * 4.0,
-		"patrol_radius": 152.0 + current_wave * 8.0,
-		"chase_speed_multiplier": 1.18 + current_wave * 0.015
+		"attack_range": 96.0 + current_wave * 3.0,
+		"patrol_radius": 148.0 + current_wave * 8.0,
+		"chase_speed_multiplier": 1.16 + current_wave * 0.015
 	}
 
 func _update_enemy_visibility() -> void:
@@ -334,16 +344,15 @@ func _spawn_covers() -> void:
 
 	var occupied_cells := {}
 
-	for cluster_index in range(COVER_CLUSTER_COUNT):
+	for _cluster_index in range(COVER_CLUSTER_COUNT):
 		var cluster_cells := _generate_cover_cluster(occupied_cells)
 		if cluster_cells.is_empty():
 			continue
 
-		var tint: Color = COVER_COLORS[cluster_index % COVER_COLORS.size()]
 		for cell_variant in cluster_cells:
 			var cell: Vector2i = cell_variant
 			occupied_cells[cell] = true
-			_spawn_cover_tile(cell, tint)
+			_spawn_cover_tile(cell, COVER_COLOR)
 
 func _spawn_cover_tile(cell: Vector2i, tint: Color) -> void:
 	var cover = CoverScene.instantiate()
@@ -430,6 +439,7 @@ func _can_use_cover_cell(cell: Vector2i, occupied_cells: Dictionary, local_cells
 func _rebuild_navigation_region() -> void:
 	var navigation_polygon := NavigationPolygon.new()
 	navigation_polygon.agent_radius = NAVIGATION_MARGIN
+	navigation_polygon.sample_partition_type = NavigationPolygon.SAMPLE_PARTITION_TRIANGULATE
 	navigation_polygon.parsed_geometry_type = NavigationPolygon.PARSED_GEOMETRY_STATIC_COLLIDERS
 	navigation_polygon.parsed_collision_mask = 8
 	navigation_polygon.source_geometry_mode = NavigationPolygon.SOURCE_GEOMETRY_ROOT_NODE_CHILDREN
