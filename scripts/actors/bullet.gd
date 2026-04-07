@@ -7,12 +7,17 @@ const DEFAULT_WIDTH := 1.5
 const DEFAULT_FLASH_DURATION := 0.06
 const DEFAULT_COLLISION_MASK := 10
 const DEFAULT_COLOR := Color(1.0, 0.894118, 0.345098, 0.95)
+const DEFAULT_VISUAL_SPEED := 7200.0
 
 var direction: Vector2 = Vector2.RIGHT
 var max_range: float = DEFAULT_RANGE
 var damage: int = DEFAULT_DAMAGE
 var flash_duration: float = DEFAULT_FLASH_DURATION
 var remaining_flash_time: float = DEFAULT_FLASH_DURATION
+var visual_speed: float = DEFAULT_VISUAL_SPEED
+var travel_duration: float = 0.01
+var travel_elapsed: float = 0.0
+var beam_target_local: Vector2 = Vector2.ZERO
 var collision_mask_bits: int = DEFAULT_COLLISION_MASK
 var beam_color: Color = DEFAULT_COLOR
 var impact_color: Color = DEFAULT_COLOR
@@ -28,6 +33,14 @@ func _ready() -> void:
     _fire_hitscan()
 
 func _process(delta: float) -> void:
+    if travel_elapsed < travel_duration:
+        travel_elapsed = min(travel_elapsed + delta, travel_duration)
+        var travel_ratio: float = travel_elapsed / travel_duration if travel_duration > 0.0 else 1.0
+        trail.points = PackedVector2Array([Vector2.ZERO, beam_target_local * travel_ratio])
+
+        if travel_elapsed < travel_duration:
+            return
+
     remaining_flash_time = max(remaining_flash_time - delta, 0.0)
     if remaining_flash_time <= 0.0:
         queue_free()
@@ -44,6 +57,10 @@ func setup(move_direction: Vector2, _rect: Rect2, config: Dictionary = {}) -> vo
     damage = config.get("damage", DEFAULT_DAMAGE)
     flash_duration = config.get("flash_duration", DEFAULT_FLASH_DURATION)
     remaining_flash_time = flash_duration
+    visual_speed = config.get("visual_speed", DEFAULT_VISUAL_SPEED)
+    travel_duration = 0.01
+    travel_elapsed = 0.0
+    beam_target_local = Vector2.ZERO
     collision_mask_bits = config.get("collision_mask", DEFAULT_COLLISION_MASK)
     beam_color = config.get("color", DEFAULT_COLOR)
     impact_color = config.get("impact_color", beam_color)
@@ -67,7 +84,9 @@ func _fire_hitscan() -> void:
         _spawn_hit_spark(hit_position, hit.get("normal", -direction))
         _apply_hit(hit.get("collider"))
 
-    trail.points = PackedVector2Array([Vector2.ZERO, hit_position - global_position])
+    beam_target_local = hit_position - global_position
+    travel_duration = max(beam_target_local.length() / max(visual_speed, 1.0), 0.01)
+    trail.points = PackedVector2Array([Vector2.ZERO, Vector2.ZERO])
 
 func _apply_hit(collider_variant: Variant) -> void:
     var collider := collider_variant as Node

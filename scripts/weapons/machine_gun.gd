@@ -35,6 +35,7 @@ func _build_bullet_config() -> Dictionary:
         "impact_color": IMPACT_COLOR,
         "width": 1.25,
         "flash_duration": 0.045,
+        "visual_speed": 8400.0,
         "can_hit_player": false,
         "can_hit_enemies": true,
         "can_hit_covers": true

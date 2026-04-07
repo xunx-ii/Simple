@@ -388,6 +388,7 @@ func _fire_attack_bullet() -> void:
             "color": Color(1.0, 0.8, 0.45, 0.95),
             "width": 2.0,
             "flash_duration": 0.05,
+            "visual_speed": 7600.0,
             "can_hit_player": true,
             "can_hit_enemies": false,
             "can_hit_covers": true
