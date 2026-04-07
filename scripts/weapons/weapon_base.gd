@@ -1,7 +1,7 @@
 class_name WeaponBase
 extends RefCounted
 
-var weapon_name: String = "Weapon"
+var weapon_name: String = "武器"
 var muzzle_distance: float = 10.0
 var fire_interval: float = 0.12
 var cooldown_remaining: float = 0.0

@@ -139,6 +139,7 @@ func take_damage(amount: int, from_direction: Vector2) -> void:
         _clamp_to_arena()
 
     if current_health == 0:
+        _drop_loot()
         defeated.emit()
         queue_free()
         return
@@ -508,6 +509,21 @@ func _on_target_spotted() -> void:
 func _perform_attack() -> void:
     if attack_component != null and attack_component.has_method("perform_attack"):
         attack_component.perform_attack(self)
+
+func _drop_loot() -> void:
+    if world_controller == null or not world_controller.has_method("spawn_loot_drop"):
+        return
+
+    world_controller.spawn_loot_drop(global_position, _build_loot_drop_data())
+
+func _build_loot_drop_data() -> Dictionary:
+    return {
+        "id": "scrap",
+        "display_name": "废料",
+        "quantity": 1,
+        "sell_value": 1,
+        "tint": Color(1.0, 0.803922, 0.313725, 1.0)
+    }
 
 func _get_state_color(state: int) -> Color:
     match state:

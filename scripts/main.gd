@@ -8,6 +8,7 @@ const MeleeEnemyScene := preload("res://scenes/actors/enemy_melee.tscn")
 const BulletScene := preload("res://scenes/actors/bullet.tscn")
 const CoverScene := preload("res://scenes/actors/cover.tscn")
 const HitSparkScene := preload("res://scenes/effects/hit_spark.tscn")
+const LootPickupScene := preload("res://scenes/actors/loot_pickup.tscn")
 
 const WORLD_SIZE := Vector2(1280.0, 720.0)
 const WORLD_RECT := Rect2(Vector2.ZERO, WORLD_SIZE)
@@ -27,6 +28,8 @@ var is_shutting_down: bool = false
 @onready var covers: Node2D = $Covers
 @onready var navigation_region: NavigationRegion2D = $NavigationRegion2D
 @onready var enemies: Node2D = $Enemies
+@onready var merchant_npc: Node2D = $MerchantNPC
+@onready var loot_drops: Node2D = $LootDrops
 @onready var bullets: Node2D = $Bullets
 @onready var hit_effects: Node2D = $HitEffects
 @onready var spawn_timer: Timer = $SpawnTimer
@@ -46,6 +49,7 @@ func _ready() -> void:
 	_configure_process_modes()
 	_setup_ui()
 	_setup_player()
+	_setup_merchant()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
@@ -108,6 +112,12 @@ func _draw() -> void:
 func _setup_ui() -> void:
 	ui_controller.restart_requested.connect(_on_restart_requested)
 	ui_controller.quit_requested.connect(_on_quit_requested)
+	if ui_controller.has_signal("shop_purchase_requested"):
+		ui_controller.shop_purchase_requested.connect(_on_shop_purchase_requested)
+	if ui_controller.has_signal("shop_sell_requested"):
+		ui_controller.shop_sell_requested.connect(_on_shop_sell_requested)
+	if ui_controller.has_signal("shop_closed"):
+		ui_controller.shop_closed.connect(_on_shop_closed)
 
 func _setup_player() -> void:
 	player.configure_arena(WORLD_RECT)
@@ -115,7 +125,19 @@ func _setup_player() -> void:
 
 	player.shoot_requested.connect(_on_player_shoot_requested)
 	player.health_changed.connect(_on_player_health_changed)
+	player.inventory_changed.connect(_on_player_inventory_changed)
+	player.currency_changed.connect(_on_player_currency_changed)
 	player.defeated.connect(_on_player_defeated)
+
+func _setup_merchant() -> void:
+	if merchant_npc == null:
+		return
+
+	if merchant_npc.has_method("setup"):
+		merchant_npc.setup(player)
+
+	if merchant_npc.has_signal("shop_requested"):
+		merchant_npc.shop_requested.connect(_on_merchant_shop_requested)
 
 func _on_spawn_timer_timeout() -> void:
 	if not wave_director.should_spawn_enemy(game_over):
@@ -153,11 +175,86 @@ func _on_player_shoot_requested(projectiles: Array) -> void:
 func _on_player_health_changed(_current_health: int) -> void:
 	_update_ui()
 
+func _on_player_inventory_changed(_inventory_snapshot: Dictionary) -> void:
+	_refresh_shop_ui()
+	_update_ui()
+
+func _on_player_currency_changed(_current_gold: int) -> void:
+	_refresh_shop_ui()
+	_update_ui()
+
+func _on_merchant_shop_requested() -> void:
+	if game_over:
+		return
+
+	if merchant_npc == null or ui_controller == null:
+		return
+
+	if merchant_npc.has_method("build_shop_state") and ui_controller.has_method("open_shop"):
+		ui_controller.open_shop(merchant_npc.build_shop_state(player))
+
+func _on_shop_purchase_requested(item_id: String) -> void:
+	if merchant_npc == null or not merchant_npc.has_method("get_shop_offer"):
+		return
+
+	var offer: Dictionary = merchant_npc.get_shop_offer(item_id)
+	if offer.is_empty():
+		_show_banner("暂无商品", 1.1)
+		return
+
+	if not is_instance_valid(player) or not player.has_method("buy_inventory_item"):
+		return
+
+	var purchase_result: Dictionary = player.buy_inventory_item(
+		offer.get("item_data", {}),
+		int(offer.get("price", 0))
+	)
+	if bool(purchase_result.get("success", false)):
+		_show_banner(
+			"购买 %s  -%d金币" % [offer.get("display_name", "物品"), offer.get("price", 0)],
+			1.1
+		)
+	else:
+		var reason: String = str(purchase_result.get("reason", "FAILED"))
+		match reason:
+			"NOT_ENOUGH_GOLD":
+				_show_banner("金币不足", 1.1)
+			"BAG_FULL":
+				_show_banner("背包已满", 1.1)
+			_:
+				_show_banner("无法购买", 1.1)
+
+	_refresh_shop_ui()
+	_update_ui()
+
+func _on_shop_sell_requested(item_id: String) -> void:
+	if not is_instance_valid(player) or not player.has_method("sell_inventory_item"):
+		return
+
+	var sale_result: Dictionary = player.sell_inventory_item(item_id)
+	var items_sold: int = int(sale_result.get("quantity_sold", 0))
+	var gold_earned: int = int(sale_result.get("gold_earned", 0))
+	if items_sold <= 0 or gold_earned <= 0:
+		_show_banner("无法出售", 1.1)
+	else:
+		_show_banner(
+			"卖出 %s  +%d金币" % [sale_result.get("display_name", "物品"), gold_earned],
+			1.1
+		)
+
+	_refresh_shop_ui()
+	_update_ui()
+
+func _on_shop_closed() -> void:
+	_update_ui()
+
 func _on_player_defeated() -> void:
 	ui_controller.close_pause_menu()
+	if ui_controller.has_method("close_shop_menu"):
+		ui_controller.close_shop_menu()
 	game_over = true
 	spawn_timer.stop()
-	_show_banner("GAME OVER", 999.0)
+	_show_banner("游戏结束", 999.0)
 	_update_ui()
 
 func _on_enemy_defeated() -> void:
@@ -177,6 +274,15 @@ func _on_cover_destroyed(cell: Vector2i) -> void:
 
 func _update_ui() -> void:
 	ui_controller.apply_hud(_build_hud_state())
+
+func _refresh_shop_ui() -> void:
+	if ui_controller == null or not ui_controller.has_method("is_shop_open") or not ui_controller.is_shop_open():
+		return
+
+	if merchant_npc == null or not merchant_npc.has_method("build_shop_state"):
+		return
+
+	ui_controller.apply_shop_state(merchant_npc.build_shop_state(player))
 
 func _start_next_wave() -> void:
 	wave_director.start_next_wave(spawn_timer)
@@ -224,6 +330,8 @@ func _configure_process_modes() -> void:
 		covers,
 		navigation_region,
 		enemies,
+		merchant_npc,
+		loot_drops,
 		bullets,
 		hit_effects,
 		spawn_timer
@@ -256,6 +364,14 @@ func spawn_hit_spark(impact_position: Vector2, normal: Vector2, config: Dictiona
 
 	if hit_spark.has_method("setup"):
 		hit_spark.setup(normal, config)
+
+func spawn_loot_drop(origin: Vector2, drop_data: Dictionary = {}) -> void:
+	var loot_pickup = LootPickupScene.instantiate()
+	loot_pickup.global_position = _clamp_point_to_world(origin)
+	loot_drops.add_child(loot_pickup)
+
+	if loot_pickup.has_method("setup"):
+		loot_pickup.setup(drop_data)
 
 func find_walkable_point_near(origin: Vector2, radius: float) -> Vector2:
 	return cover_manager.find_walkable_point_near(origin, radius)
@@ -331,14 +447,40 @@ func _build_outline_from_rect(rect: Rect2) -> PackedVector2Array:
 	return PackedVector2Array([top_left, bottom_left, bottom_right, top_right])
 
 func _build_hud_state() -> Dictionary:
+	var gold := 0
+	var inventory_summary_text := ""
+	var inventory_panel_text := "空"
+	var inventory_items: Array[Dictionary] = []
+	var interaction_text := ""
+	if is_instance_valid(player):
+		gold = player.get_gold()
+		var inventory_snapshot: Dictionary = player.get_inventory_snapshot()
+		inventory_summary_text = str(inventory_snapshot.get("summary_text", "背包 0/8"))
+		inventory_panel_text = str(inventory_snapshot.get("panel_text", "空"))
+		var inventory_items_variant: Variant = inventory_snapshot.get("items", [])
+		if inventory_items_variant is Array:
+			for item_variant in inventory_items_variant:
+				if item_variant is Dictionary:
+					var item: Dictionary = item_variant
+					inventory_items.append(item.duplicate(true))
+	if is_instance_valid(merchant_npc) and merchant_npc.has_method("get_interaction_prompt"):
+		interaction_text = merchant_npc.get_interaction_prompt()
+	if ui_controller != null and ui_controller.has_method("is_shop_open") and ui_controller.is_shop_open():
+		interaction_text = ""
+
 	return {
 		"health": player.current_health,
 		"score": wave_director.score,
+		"gold": gold,
 		"wave": wave_director.current_wave,
 		"dash_ready": player.is_dash_ready(),
 		"dash_cooldown": player.get_dash_cooldown_remaining(),
 		"dash_ratio": player.get_dash_ratio(),
 		"weapon_name": player.get_weapon_name(),
+		"inventory_summary_text": inventory_summary_text,
+		"inventory_panel_text": inventory_panel_text,
+		"inventory_items": inventory_items,
+		"interaction_text": interaction_text,
 		"banner_text": wave_director.banner_text,
 		"game_over": game_over
 	}

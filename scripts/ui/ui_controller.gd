@@ -3,14 +3,20 @@ extends CanvasLayer
 
 signal restart_requested
 signal quit_requested
+signal shop_purchase_requested(item_id: String)
+signal shop_sell_requested(item_id: String)
+signal shop_closed
 
-const DASH_READY_TEXT := "DASH READY"
-const ACTIVE_STATE_TEMPLATE := "WASD Move  SHIFT Dash\nMouse Aim  RMB Aim  LMB Shoot\n%s  ENEMY NAV AGENT"
-const GAME_OVER_TEXT := "Game Over"
+const DASH_READY_TEXT := "冲刺就绪"
+const ACTIVE_STATE_TEMPLATE := "Tab 背包  E 交易  Esc 菜单"
+const GAME_OVER_TEXT := "游戏结束"
+const DEFAULT_EMPTY_INVENTORY_TEXT := "空"
+const DEFAULT_EMPTY_INVENTORY_HINT := ""
 
 var game_over: bool = false
 var player: Node2D = null
 var current_hud_state: Dictionary = {}
+var current_shop_state: Dictionary = {}
 
 @onready var fog_overlay: ColorRect = $FogOverlay
 @onready var score_label: Label = $ScoreLabel
@@ -20,6 +26,18 @@ var current_hud_state: Dictionary = {}
 @onready var dash_label: Label = $DashLabel
 @onready var dash_bar_fill: ColorRect = $DashBarFill
 @onready var banner_label: Label = $BannerLabel
+@onready var gold_label: Label = $GoldLabel
+@onready var inventory_label: Label = $InventoryLabel
+@onready var inventory_overlay: Control = $InventoryOverlay
+@onready var inventory_summary_label: Label = $InventoryOverlay/InventoryPanel/InventoryLayout/InventorySummaryLabel
+@onready var inventory_items_container: VBoxContainer = $InventoryOverlay/InventoryPanel/InventoryLayout/InventoryScroll/InventoryItems
+@onready var interaction_label: Label = $InteractionLabel
+@onready var shop_overlay: Control = $ShopOverlay
+@onready var shop_title_label: Label = $ShopOverlay/ShopPanel/ShopLayout/ShopTitleLabel
+@onready var shop_info_label: Label = $ShopOverlay/ShopPanel/ShopLayout/ShopInfoLabel
+@onready var shop_bag_items_container: VBoxContainer = $ShopOverlay/ShopPanel/ShopLayout/ShopColumns/BagSection/BagScroll/BagItems
+@onready var shop_stock_items_container: VBoxContainer = $ShopOverlay/ShopPanel/ShopLayout/ShopColumns/StockSection/StockScroll/StockItems
+@onready var shop_close_button: Button = $ShopOverlay/ShopPanel/ShopLayout/ShopCloseButton
 @onready var pause_overlay: Control = $PauseOverlay
 @onready var continue_button: Button = $PauseOverlay/PausePanel/PauseButtons/ContinueButton
 @onready var quit_button: Button = $PauseOverlay/PausePanel/PauseButtons/QuitButton
@@ -29,11 +47,18 @@ var current_hud_state: Dictionary = {}
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_configure_process_modes()
-	continue_button.text = "继续游戏"
-	quit_button.text = "退出游戏"
+	continue_button.text = "继续"
+	quit_button.text = "退出"
 	continue_button.pressed.connect(_on_continue_button_pressed)
 	quit_button.pressed.connect(_on_quit_button_pressed)
+	shop_close_button.pressed.connect(_on_shop_close_button_pressed)
 	set_pause_menu_visible(false)
+	set_inventory_visible(false)
+	_set_shop_menu_visible_state(false)
+	inventory_summary_label.visible = false
+	_rebuild_inventory_list(inventory_items_container, [])
+	_rebuild_shop_bag_list([])
+	_rebuild_shop_stock_list([])
 
 func _process(_delta: float) -> void:
 	if game_over:
@@ -41,7 +66,20 @@ func _process(_delta: float) -> void:
 			restart_requested.emit()
 		return
 
+	if shop_overlay.visible:
+		if Input.is_action_just_pressed("ui_cancel"):
+			close_shop_menu()
+		return
+
+	if Input.is_action_just_pressed("inventory") and not pause_overlay.visible:
+		set_inventory_visible(not inventory_overlay.visible)
+		return
+
 	if Input.is_action_just_pressed("ui_cancel"):
+		if inventory_overlay.visible:
+			set_inventory_visible(false)
+			return
+
 		set_pause_menu_visible(not pause_overlay.visible)
 
 func setup(player_node: Node2D) -> void:
@@ -60,11 +98,15 @@ func apply_hud(state: Dictionary) -> void:
 	var normalized_state := {
 		"health": int(state.get("health", 0)),
 		"score": int(state.get("score", 0)),
+		"gold": int(state.get("gold", 0)),
 		"wave": int(state.get("wave", 0)),
 		"dash_ready": bool(state.get("dash_ready", false)),
 		"dash_cooldown": float(state.get("dash_cooldown", 0.0)),
 		"dash_ratio": float(state.get("dash_ratio", 0.0)),
-		"weapon_name": str(state.get("weapon_name", "UNARMED")),
+		"weapon_name": str(state.get("weapon_name", "徒手")),
+		"inventory_summary_text": str(state.get("inventory_summary_text", "背包 0/0")),
+		"inventory_items": _sanitize_entry_list(state.get("inventory_items", [])),
+		"interaction_text": str(state.get("interaction_text", "")),
 		"banner_text": str(state.get("banner_text", "")),
 		"game_over": bool(state.get("game_over", false))
 	}
@@ -76,31 +118,82 @@ func apply_hud(state: Dictionary) -> void:
 	var next_game_over: bool = normalized_state["game_over"]
 	if next_game_over and not game_over:
 		set_pause_menu_visible(false)
+		if shop_overlay.visible:
+			_set_shop_menu_visible_state(false)
+			current_shop_state.clear()
 
 	game_over = next_game_over
-	score_label.text = "HP: %d  SCORE: %d" % [normalized_state["health"], normalized_state["score"]]
-	wave_label.text = "WAVE %d" % normalized_state["wave"]
+	score_label.text = "生命 %d  积分 %d" % [normalized_state["health"], normalized_state["score"]]
+	gold_label.text = "金币 %d" % normalized_state["gold"]
+	wave_label.text = "第 %d 波" % normalized_state["wave"]
 	banner_label.text = normalized_state["banner_text"]
+	inventory_label.text = normalized_state["inventory_summary_text"]
+	inventory_summary_label.text = normalized_state["inventory_summary_text"]
+	_rebuild_inventory_list(inventory_items_container, normalized_state["inventory_items"])
+	_refresh_interaction_prompt()
 
 	var dash_ready: bool = normalized_state["dash_ready"]
 	var dash_ratio: float = normalized_state["dash_ratio"]
-	dash_label.text = DASH_READY_TEXT if dash_ready else "DASH %.1f" % normalized_state["dash_cooldown"]
+	dash_label.text = DASH_READY_TEXT if dash_ready else "冲刺 %.1f" % normalized_state["dash_cooldown"]
 	dash_bar_fill.size.x = 72.0 * dash_ratio
 	dash_bar_fill.color = Color(0.35, 0.87, 1.0, 1.0) if dash_ready else Color(0.31, 0.67, 0.96, 1.0)
 
 	restart_label.visible = game_over
 	if game_over:
+		set_inventory_visible(false)
+		interaction_label.visible = false
 		state_label.text = GAME_OVER_TEXT
 		return
 
-	state_label.text = ACTIVE_STATE_TEMPLATE % normalized_state["weapon_name"]
+	state_label.text = ACTIVE_STATE_TEMPLATE
+
+func open_shop(shop_state: Dictionary) -> void:
+	set_inventory_visible(false)
+	apply_shop_state(shop_state)
+	_set_shop_menu_visible_state(true)
+
+func apply_shop_state(shop_state: Dictionary) -> void:
+	current_shop_state = {
+		"title": str(shop_state.get("title", "商店")),
+		"gold": int(shop_state.get("gold", 0)),
+		"bag_summary": str(shop_state.get("bag_summary", "背包 0/0")),
+		"items": _sanitize_entry_list(shop_state.get("items", [])),
+		"inventory_items": _sanitize_entry_list(shop_state.get("inventory_items", []))
+	}
+	shop_title_label.text = str(current_shop_state.get("title", "商店"))
+	shop_info_label.text = "金币：%d" % int(current_shop_state.get("gold", 0))
+	var inventory_items: Array = current_shop_state.get("inventory_items", [])
+	var stock_items: Array = current_shop_state.get("items", [])
+	_rebuild_shop_bag_list(inventory_items)
+	_rebuild_shop_stock_list(stock_items)
+
+func is_shop_open() -> bool:
+	return shop_overlay.visible
+
+func close_shop_menu() -> void:
+	if not shop_overlay.visible:
+		return
+
+	_set_shop_menu_visible_state(false)
+	current_shop_state.clear()
+	shop_closed.emit()
 
 func set_pause_menu_visible(menu_open: bool) -> void:
+	if menu_open:
+		set_inventory_visible(false)
+		if shop_overlay.visible:
+			close_shop_menu()
+
 	pause_overlay.visible = menu_open
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if menu_open else Input.MOUSE_MODE_CONFINED_HIDDEN
-	var tree := get_tree()
-	if tree != null:
-		tree.paused = menu_open
+	_refresh_modal_state()
+	_refresh_interaction_prompt()
+
+func set_inventory_visible(menu_open: bool) -> void:
+	if menu_open and shop_overlay.visible:
+		close_shop_menu()
+
+	inventory_overlay.visible = menu_open
+	_refresh_interaction_prompt()
 
 func close_pause_menu() -> void:
 	set_pause_menu_visible(false)
@@ -109,12 +202,164 @@ func _configure_process_modes() -> void:
 	fog_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	damage_indicators.process_mode = Node.PROCESS_MODE_ALWAYS
 	crosshair.process_mode = Node.PROCESS_MODE_ALWAYS
+	inventory_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	inventory_items_container.process_mode = Node.PROCESS_MODE_ALWAYS
+	shop_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	shop_bag_items_container.process_mode = Node.PROCESS_MODE_ALWAYS
+	shop_stock_items_container.process_mode = Node.PROCESS_MODE_ALWAYS
 	pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+	shop_close_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
+
+func _set_shop_menu_visible_state(menu_open: bool) -> void:
+	shop_overlay.visible = menu_open
+	_refresh_modal_state()
+	_refresh_interaction_prompt()
+
+func _refresh_modal_state() -> void:
+	var modal_open: bool = pause_overlay.visible or shop_overlay.visible
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if modal_open else Input.MOUSE_MODE_CONFINED_HIDDEN
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = modal_open
 
 func _on_continue_button_pressed() -> void:
 	set_pause_menu_visible(false)
 
 func _on_quit_button_pressed() -> void:
 	quit_requested.emit()
+
+func _on_shop_buy_button_pressed(item_id: String) -> void:
+	shop_purchase_requested.emit(item_id)
+
+func _on_shop_sell_button_pressed(item_id: String) -> void:
+	shop_sell_requested.emit(item_id)
+
+func _on_shop_close_button_pressed() -> void:
+	close_shop_menu()
+
+func _sanitize_entry_list(entries_variant: Variant) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if entries_variant is Array:
+		for entry_variant in entries_variant:
+			if entry_variant is Dictionary:
+				var entry: Dictionary = entry_variant
+				entries.append(entry.duplicate(true))
+
+	return entries
+
+func _rebuild_inventory_list(container: VBoxContainer, items: Array) -> void:
+	_clear_container(container)
+	if items.is_empty():
+		_add_empty_list_label(container, DEFAULT_EMPTY_INVENTORY_TEXT, DEFAULT_EMPTY_INVENTORY_HINT)
+		return
+
+	for item in items:
+		var quantity: int = int(item.get("quantity", 0))
+		_add_list_row(
+			container,
+			"%s  x%d" % [item.get("display_name", "物品"), quantity]
+		)
+
+func _rebuild_shop_bag_list(items: Array) -> void:
+	_clear_container(shop_bag_items_container)
+	if items.is_empty():
+		_add_empty_list_label(shop_bag_items_container, "背包为空", "")
+		return
+
+	for item in items:
+		var item_id: String = str(item.get("id", ""))
+		var quantity: int = int(item.get("quantity", 0))
+		var sell_value: int = int(item.get("sell_value", 0))
+		_add_list_row(
+			shop_bag_items_container,
+			"%s  x%d  %d金币" % [item.get("display_name", "物品"), quantity, sell_value],
+			"卖出",
+			item_id,
+			_on_shop_sell_button_pressed,
+			not item_id.is_empty() and quantity > 0
+		)
+
+func _rebuild_shop_stock_list(items: Array) -> void:
+	_clear_container(shop_stock_items_container)
+	if items.is_empty():
+		_add_empty_list_label(shop_stock_items_container, "暂无商品", "")
+		return
+
+	for item in items:
+		var item_id: String = str(item.get("id", ""))
+		var price: int = int(item.get("price", 0))
+		_add_list_row(
+			shop_stock_items_container,
+			"%s  %d金币" % [item.get("display_name", "物品"), price],
+			"购买",
+			item_id,
+			_on_shop_buy_button_pressed,
+			bool(item.get("can_afford", false)),
+			str(item.get("description", ""))
+		)
+
+func _clear_container(container: VBoxContainer) -> void:
+	for child in container.get_children():
+		container.remove_child(child)
+		child.queue_free()
+
+func _add_empty_list_label(container: VBoxContainer, message: String, detail: String) -> void:
+	var label := Label.new()
+	label.text = message if detail.is_empty() else "%s\n%s" % [message, detail]
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_apply_text_style(label)
+	container.add_child(label)
+
+func _add_list_row(
+	container: VBoxContainer,
+	label_text: String,
+	button_text: String = "",
+	item_id: String = "",
+	callback: Callable = Callable(),
+	is_enabled: bool = false,
+	tooltip_text: String = ""
+) -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 8)
+	container.add_child(row)
+
+	var item_label := Label.new()
+	item_label.text = label_text
+	item_label.clip_text = true
+	item_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_text_style(item_label)
+	row.add_child(item_label)
+
+	if button_text.is_empty():
+		return
+
+	var button := Button.new()
+	button.text = button_text
+	button.custom_minimum_size = Vector2(56.0, 24.0)
+	button.disabled = not is_enabled
+	button.tooltip_text = tooltip_text
+	button.process_mode = Node.PROCESS_MODE_ALWAYS
+	_apply_text_style(button)
+	if callback.is_valid() and not item_id.is_empty():
+		button.pressed.connect(callback.bind(item_id))
+	row.add_child(button)
+
+func _apply_text_style(control: Control, font_size: int = 12) -> void:
+	var ui_font: Font = score_label.get_theme_font("font")
+	if ui_font != null:
+		control.add_theme_font_override("font", ui_font)
+	control.add_theme_font_size_override("font_size", font_size)
+
+func _refresh_interaction_prompt() -> void:
+	var interaction_text: String = str(current_hud_state.get("interaction_text", ""))
+	interaction_label.text = interaction_text
+	interaction_label.visible = (
+		not interaction_text.is_empty()
+		and not game_over
+		and not inventory_overlay.visible
+		and not shop_overlay.visible
+		and not pause_overlay.visible
+	)

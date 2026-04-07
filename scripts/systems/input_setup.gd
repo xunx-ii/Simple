@@ -7,6 +7,8 @@ static func ensure_default_actions() -> void:
     _ensure_key_action("move_down", [KEY_S, KEY_DOWN])
     _ensure_key_action("shoot", [KEY_SPACE])
     _ensure_key_action("dash", [KEY_SHIFT, KEY_X])
+    _ensure_key_action("inventory", [KEY_TAB, KEY_I])
+    _ensure_key_action("interact", [KEY_E, KEY_F])
     _ensure_key_action("restart", [KEY_R, KEY_ENTER, KEY_KP_ENTER])
     _ensure_mouse_button_action("shoot", MOUSE_BUTTON_LEFT)
     _ensure_mouse_button_action("aim", MOUSE_BUTTON_RIGHT)

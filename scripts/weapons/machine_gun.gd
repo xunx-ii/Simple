@@ -7,7 +7,7 @@ const BULLET_COLOR := Color(1.0, 0.960784, 0.717647, 0.95)
 const IMPACT_COLOR := Color(1.0, 0.878431, 0.533333, 0.95)
 
 func _init() -> void:
-    weapon_name = "MACHINE GUN"
+    weapon_name = "机枪"
     muzzle_distance = 10.0
     fire_interval = 0.08
     recoil_per_shot = 0.48

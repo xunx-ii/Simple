@@ -2,10 +2,13 @@ class_name PlayerController
 extends CharacterBody2D
 
 const MachineGunWeaponScript = preload("res://scripts/weapons/machine_gun.gd")
+const InventoryManagerScript = preload("res://scripts/systems/inventory_manager.gd")
 
 signal shoot_requested(projectiles: Array)
 signal health_changed(current_health: int)
 signal hidden_hit_received(source_position: Vector2)
+signal inventory_changed(inventory_snapshot: Dictionary)
+signal currency_changed(current_gold: int)
 signal defeated
 
 const PLAYER_COLOR := Color(0.360784, 0.870588, 1.0, 1.0)
@@ -14,7 +17,7 @@ const MOVE_SPEED := 88.0
 const AIM_MOVE_SPEED_MULTIPLIER := 0.58
 const HIT_INVULNERABILITY := 0.6
 const DASH_SPEED := 200.0
-const DASH_DURATION := 0.12
+const DASH_DURATION := 0.18
 const DASH_COOLDOWN := 1.0
 const MAX_HEALTH := 100
 const BODY_MARGIN := 8.0
@@ -24,6 +27,8 @@ const MAX_CAMERA_SHAKE := 6.0
 const MAX_SPRITE_KICK := 5.0
 const VISION_CONE_DEGREES := 120.0
 const CAMERA_WORLD_VIEW_RATIO := 0.5
+const INVENTORY_CAPACITY := 8
+const STARTING_GOLD := 0
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(320.0, 180.0))
 var aim_direction: Vector2 = Vector2.RIGHT
@@ -34,7 +39,9 @@ var dash_cooldown_remaining: float = 0.0
 var dash_direction: Vector2 = Vector2.RIGHT
 var is_aiming: bool = false
 var is_dead: bool = false
+var gold: int = STARTING_GOLD
 var current_weapon
+var inventory_manager
 var sprite_kick_offset: Vector2 = Vector2.ZERO
 var camera_shake_strength: float = 0.0
 
@@ -45,11 +52,15 @@ func _ready() -> void:
     add_to_group("player")
     sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     current_weapon = MachineGunWeaponScript.new()
+    inventory_manager = InventoryManagerScript.new()
+    inventory_manager.setup(INVENTORY_CAPACITY)
     var viewport := get_viewport()
     if viewport != null:
         viewport.size_changed.connect(_on_viewport_size_changed)
     _update_camera_view()
     health_changed.emit(current_health)
+    inventory_changed.emit(get_inventory_snapshot())
+    currency_changed.emit(gold)
 
 func _physics_process(delta: float) -> void:
     if is_dead:
@@ -156,9 +167,125 @@ func get_dash_cooldown_remaining() -> float:
 
 func get_weapon_name() -> String:
     if current_weapon == null:
-        return "UNARMED"
+        return "徒手"
 
     return current_weapon.weapon_name
+
+func add_inventory_item(item_data: Dictionary) -> bool:
+    if is_dead or inventory_manager == null:
+        return false
+
+    var added: bool = inventory_manager.add_item(item_data)
+    if added:
+        inventory_changed.emit(get_inventory_snapshot())
+
+    return added
+
+func get_inventory_snapshot() -> Dictionary:
+    if inventory_manager == null:
+        return {
+            "capacity": INVENTORY_CAPACITY,
+            "used_slots": 0,
+            "total_quantity": 0,
+            "total_sale_value": 0,
+            "summary_text": "背包 0/%d" % INVENTORY_CAPACITY,
+            "panel_text": "空",
+            "items": []
+        }
+
+    return inventory_manager.build_snapshot()
+
+func get_inventory_summary_text() -> String:
+    return str(get_inventory_snapshot().get("summary_text", "背包 0/0"))
+
+func get_inventory_panel_text() -> String:
+    return str(get_inventory_snapshot().get("panel_text", "空"))
+
+func get_gold() -> int:
+    return gold
+
+func get_pending_sale_gold() -> int:
+    return int(get_inventory_snapshot().get("total_sale_value", 0))
+
+func buy_inventory_item(item_data: Dictionary, price: int) -> Dictionary:
+    if is_dead or inventory_manager == null:
+        return {
+            "success": false,
+            "reason": "UNAVAILABLE",
+            "gold_spent": 0,
+            "gold_total": gold
+        }
+
+    var normalized_price: int = maxi(price, 0)
+    if gold < normalized_price:
+        return {
+            "success": false,
+            "reason": "NOT_ENOUGH_GOLD",
+            "gold_spent": 0,
+            "gold_total": gold,
+            "price": normalized_price
+        }
+
+    var added: bool = inventory_manager.add_item(item_data)
+    if not added:
+        return {
+            "success": false,
+            "reason": "BAG_FULL",
+            "gold_spent": 0,
+            "gold_total": gold
+        }
+
+    gold -= normalized_price
+    inventory_changed.emit(get_inventory_snapshot())
+    currency_changed.emit(gold)
+    return {
+        "success": true,
+        "reason": "PURCHASED",
+        "gold_spent": normalized_price,
+        "gold_total": gold
+    }
+
+func sell_inventory_items() -> Dictionary:
+    if is_dead or inventory_manager == null:
+        return {
+            "items_sold": 0,
+            "gold_earned": 0,
+            "gold_total": gold
+        }
+
+    var sale_result: Dictionary = inventory_manager.sell_all_items()
+    var items_sold: int = int(sale_result.get("items_sold", 0))
+    var gold_earned: int = int(sale_result.get("gold_earned", 0))
+
+    if items_sold > 0:
+        gold += gold_earned
+        inventory_changed.emit(get_inventory_snapshot())
+        currency_changed.emit(gold)
+
+    sale_result["gold_total"] = gold
+    return sale_result
+
+func sell_inventory_item(item_id: String) -> Dictionary:
+    if is_dead or inventory_manager == null:
+        return {
+            "success": false,
+            "reason": "UNAVAILABLE",
+            "item_id": item_id,
+            "gold_earned": 0,
+            "gold_total": gold
+        }
+
+    var sale_result: Dictionary = inventory_manager.sell_item(item_id, 1)
+    if not bool(sale_result.get("success", false)):
+        sale_result["gold_total"] = gold
+        return sale_result
+
+    var gold_earned: int = int(sale_result.get("gold_earned", 0))
+    gold += gold_earned
+    inventory_changed.emit(get_inventory_snapshot())
+    currency_changed.emit(gold)
+    sale_result["gold_total"] = gold
+    return sale_result
 
 func get_crosshair_outer_scale() -> float:
     if current_weapon == null or not current_weapon.has_method("get_crosshair_outer_scale"):

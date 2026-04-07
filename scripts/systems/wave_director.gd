@@ -47,7 +47,7 @@ func start_next_wave(spawn_timer: Timer) -> void:
     enemies_alive = 0
     spawn_timer.wait_time = max(1.0 - float(current_wave - 1) * 0.08, 0.4)
     spawn_timer.start()
-    set_banner("WAVE %d" % current_wave)
+    set_banner("第 %d 波" % current_wave)
 
 func begin_wave_clear(player_node: Node, spawn_timer: Timer) -> bool:
     if wave_clear_in_progress:
@@ -61,7 +61,7 @@ func begin_wave_clear(player_node: Node, spawn_timer: Timer) -> bool:
     if spawn_timer != null:
         spawn_timer.stop()
 
-    set_banner("WAVE %d CLEAR" % current_wave)
+    set_banner("第 %d 波完成" % current_wave)
     return true
 
 func cancel_wave_clear() -> void:

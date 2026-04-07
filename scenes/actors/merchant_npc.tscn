@@ -1,0 +1,30 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/actors/merchant_npc.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/placeholder.png" id="2"]
+
+[sub_resource type="CircleShape2D" id="1"]
+radius = 34.0
+
+[node name="MerchantNPC" type="Node2D"]
+script = ExtResource("1")
+
+[node name="BodySprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, 4)
+scale = Vector2(1.2, 1.4)
+texture = ExtResource("2")
+modulate = Color(0.396078, 0.568627, 0.466667, 1)
+
+[node name="HeadSprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, -12)
+scale = Vector2(0.9, 0.9)
+texture = ExtResource("2")
+modulate = Color(0.937255, 0.858824, 0.701961, 1)
+
+[node name="InteractionArea" type="Area2D" parent="."]
+collision_mask = 1
+monitoring = true
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("1")
