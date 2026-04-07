@@ -3,7 +3,7 @@ extends Area2D
 
 const BULLET_COLOR := Color(1.0, 0.894118, 0.345098, 1.0)
 const MOVE_SPEED := 220.0
-const MAX_LIFETIME := 1.2
+const MAX_LIFETIME := 1.6
 
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(320.0, 180.0))
 var direction: Vector2 = Vector2.RIGHT
@@ -28,10 +28,12 @@ func setup(move_direction: Vector2, rect: Rect2) -> void:
     arena_rect = rect
 
 func _on_body_entered(body: Node) -> void:
-    if not body.is_in_group("enemies"):
+    if body.is_in_group("enemies") and body.has_method("take_damage"):
+        body.take_damage(1, direction)
+        queue_free()
         return
 
-    if body.has_method("take_damage"):
+    if body.is_in_group("covers") and body.has_method("take_damage"):
         body.take_damage(1, direction)
-
-    queue_free()
+        queue_free()
+        return

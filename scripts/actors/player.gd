@@ -27,6 +27,7 @@ var dash_direction: Vector2 = Vector2.RIGHT
 var is_dead: bool = false
 
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var camera: Camera2D = $Camera2D
 
 func _ready() -> void:
     add_to_group("player")
@@ -66,6 +67,12 @@ func _physics_process(delta: float) -> void:
 func configure_arena(rect: Rect2) -> void:
     arena_rect = rect
     _clamp_to_arena()
+
+    camera.limit_left = int(rect.position.x)
+    camera.limit_top = int(rect.position.y)
+    camera.limit_right = int(rect.end.x)
+    camera.limit_bottom = int(rect.end.y)
+    camera.reset_smoothing()
 
 func take_hit(source_position: Vector2, damage: int = 1) -> void:
     if is_dead or hit_invulnerability_remaining > 0.0 or dash_time_remaining > 0.0:
@@ -124,7 +131,7 @@ func is_dash_ready() -> bool:
     return dash_cooldown_remaining <= 0.0
 
 func get_dash_ratio() -> float:
-    return 1.0 - dash_cooldown_remaining / DASH_COOLDOWN
+    return clampf(1.0 - dash_cooldown_remaining / DASH_COOLDOWN, 0.0, 1.0)
 
 func get_dash_cooldown_remaining() -> float:
     return dash_cooldown_remaining

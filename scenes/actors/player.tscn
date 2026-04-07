@@ -9,7 +9,7 @@ size = Vector2(12, 12)
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1")
 collision_layer = 1
-collision_mask = 2
+collision_mask = 8
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2")
@@ -17,3 +17,7 @@ modulate = Color(0.360784, 0.870588, 1, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("1")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 7.0

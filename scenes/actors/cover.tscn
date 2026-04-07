@@ -1,20 +1,19 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scripts/actors/bullet.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/actors/cover.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/textures/placeholder.png" id="2"]
 
-[sub_resource type="CircleShape2D" id="1"]
-radius = 3.0
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(30, 30)
 
-[node name="Bullet" type="Area2D"]
+[node name="Cover" type="StaticBody2D"]
 script = ExtResource("1")
-collision_layer = 4
-collision_mask = 10
+collision_layer = 8
+collision_mask = 0
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-scale = Vector2(0.5, 0.5)
 texture = ExtResource("2")
-modulate = Color(1, 0.894118, 0.345098, 1)
+modulate = Color(0.545098, 0.619608, 0.431373, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("1")
