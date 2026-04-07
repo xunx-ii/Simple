@@ -3,6 +3,9 @@ extends Node2D
 const InputSetup = preload("res://scripts/systems/input_setup.gd")
 const WaveDirectorScript = preload("res://scripts/systems/wave_director.gd")
 const CoverManagerScript = preload("res://scripts/systems/cover_manager.gd")
+const ShopServiceScript = preload("res://scripts/systems/shop_service.gd")
+const HUDStateBuilderScript = preload("res://scripts/systems/hud_state_builder.gd")
+const EnemySpawnServiceScript = preload("res://scripts/systems/enemy_spawn_service.gd")
 const RangedEnemyScene := preload("res://scenes/actors/enemy.tscn")
 const MeleeEnemyScene := preload("res://scenes/actors/enemy_melee.tscn")
 const BulletScene := preload("res://scenes/actors/bullet.tscn")
@@ -17,9 +20,12 @@ const MIN_SPAWN_DISTANCE := 112.0
 const SPAWN_VIEW_MARGIN := 48.0
 const NAVIGATION_MARGIN := 4.0
 const COVER_COLOR := Color(0.494118, 0.529412, 0.568627, 1.0)
+const GAME_OVER_BANNER_TEXT := "\u6E38\u620F\u7ED3\u675F"
 
 var cover_manager
 var wave_director
+var shop_service
+var enemy_spawn_service
 var navigation_rebuild_queued: bool = false
 var game_over: bool = false
 var is_shutting_down: bool = false
@@ -43,6 +49,9 @@ func _ready() -> void:
 
 	wave_director = WaveDirectorScript.new()
 	cover_manager = CoverManagerScript.new()
+	shop_service = ShopServiceScript.new()
+	enemy_spawn_service = EnemySpawnServiceScript.new()
+
 	cover_manager.setup(covers, CoverScene, WORLD_RECT, TILE_SIZE, COVER_COLOR, player)
 	cover_manager.spawn_covers(Callable(self, "_on_cover_destroyed"))
 	_rebuild_navigation_region()
@@ -50,6 +59,7 @@ func _ready() -> void:
 	_setup_ui()
 	_setup_player()
 	_setup_merchant()
+	_setup_services()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
@@ -94,7 +104,7 @@ func _draw() -> void:
 
 	for x in range(0, int(WORLD_SIZE.x), TILE_SIZE):
 		for y in range(0, int(WORLD_SIZE.y), TILE_SIZE):
-			var tile_rect: Rect2 = Rect2(Vector2(x, y), Vector2.ONE * TILE_SIZE)
+			var tile_rect := Rect2(Vector2(x, y), Vector2.ONE * TILE_SIZE)
 			var tile_x: int = int(x / float(TILE_SIZE))
 			var tile_y: int = int(y / float(TILE_SIZE))
 			var use_alt_color: bool = (tile_x + tile_y) % 2 == 0
@@ -139,20 +149,35 @@ func _setup_merchant() -> void:
 	if merchant_npc.has_signal("shop_requested"):
 		merchant_npc.shop_requested.connect(_on_merchant_shop_requested)
 
+func _setup_services() -> void:
+	if shop_service != null and shop_service.has_method("setup"):
+		shop_service.setup(merchant_npc, player, ui_controller)
+
+	if enemy_spawn_service != null and enemy_spawn_service.has_method("setup"):
+		enemy_spawn_service.setup(
+			{
+				"player": player,
+				"enemies_container": enemies,
+				"wave_director": wave_director,
+				"world_rect": WORLD_RECT,
+				"ranged_enemy_scene": RangedEnemyScene,
+				"melee_enemy_scene": MeleeEnemyScene,
+				"world_controller": self,
+				"enemy_defeated_callback": Callable(self, "_on_enemy_defeated"),
+				"enemy_tree_exited_callback": Callable(self, "_on_enemy_tree_exited"),
+				"is_walkable_callable": Callable(self, "_is_point_walkable"),
+				"clamp_point_callable": Callable(self, "_clamp_point_to_world"),
+				"find_walkable_point_callable": Callable(self, "find_walkable_point_near"),
+				"min_spawn_distance": MIN_SPAWN_DISTANCE,
+				"spawn_view_margin": SPAWN_VIEW_MARGIN
+			}
+		)
+
 func _on_spawn_timer_timeout() -> void:
-	if not wave_director.should_spawn_enemy(game_over):
+	if enemy_spawn_service == null:
 		return
 
-	var spawn_melee_enemy: bool = wave_director.pick_enemy_type_is_melee()
-	var enemy_scene = MeleeEnemyScene if spawn_melee_enemy else RangedEnemyScene
-	var enemy = enemy_scene.instantiate()
-	enemy.global_position = _pick_spawn_position()
-	enemy.defeated.connect(_on_enemy_defeated)
-	enemy.tree_exited.connect(_on_enemy_tree_exited)
-	enemies.add_child(enemy)
-	enemy.setup(player, WORLD_RECT, wave_director.build_enemy_config(spawn_melee_enemy), self)
-	enemy.visible = player.is_point_in_vision(enemy.global_position)
-	wave_director.register_enemy_spawned()
+	enemy_spawn_service.spawn_next_enemy(game_over)
 
 func _on_player_shoot_requested(projectiles: Array) -> void:
 	if game_over:
@@ -184,66 +209,23 @@ func _on_player_currency_changed(_current_gold: int) -> void:
 	_update_ui()
 
 func _on_merchant_shop_requested() -> void:
-	if game_over:
+	if game_over or shop_service == null:
 		return
 
-	if merchant_npc == null or ui_controller == null:
-		return
-
-	if merchant_npc.has_method("build_shop_state") and ui_controller.has_method("open_shop"):
-		ui_controller.open_shop(merchant_npc.build_shop_state(player))
+	if shop_service.open_shop():
+		_update_ui()
 
 func _on_shop_purchase_requested(item_id: String) -> void:
-	if merchant_npc == null or not merchant_npc.has_method("get_shop_offer"):
+	if shop_service == null:
 		return
 
-	var offer: Dictionary = merchant_npc.get_shop_offer(item_id)
-	if offer.is_empty():
-		_show_banner("暂无商品", 1.1)
-		return
-
-	if not is_instance_valid(player) or not player.has_method("buy_inventory_item"):
-		return
-
-	var purchase_result: Dictionary = player.buy_inventory_item(
-		offer.get("item_data", {}),
-		int(offer.get("price", 0))
-	)
-	if bool(purchase_result.get("success", false)):
-		_show_banner(
-			"购买 %s  -%d金币" % [offer.get("display_name", "物品"), offer.get("price", 0)],
-			1.1
-		)
-	else:
-		var reason: String = str(purchase_result.get("reason", "FAILED"))
-		match reason:
-			"NOT_ENOUGH_GOLD":
-				_show_banner("金币不足", 1.1)
-			"BAG_FULL":
-				_show_banner("背包已满", 1.1)
-			_:
-				_show_banner("无法购买", 1.1)
-
-	_refresh_shop_ui()
-	_update_ui()
+	_handle_shop_feedback(shop_service.buy_item(item_id))
 
 func _on_shop_sell_requested(item_id: String) -> void:
-	if not is_instance_valid(player) or not player.has_method("sell_inventory_item"):
+	if shop_service == null:
 		return
 
-	var sale_result: Dictionary = player.sell_inventory_item(item_id)
-	var items_sold: int = int(sale_result.get("quantity_sold", 0))
-	var gold_earned: int = int(sale_result.get("gold_earned", 0))
-	if items_sold <= 0 or gold_earned <= 0:
-		_show_banner("无法出售", 1.1)
-	else:
-		_show_banner(
-			"卖出 %s  +%d金币" % [sale_result.get("display_name", "物品"), gold_earned],
-			1.1
-		)
-
-	_refresh_shop_ui()
-	_update_ui()
+	_handle_shop_feedback(shop_service.sell_item(item_id))
 
 func _on_shop_closed() -> void:
 	_update_ui()
@@ -252,9 +234,10 @@ func _on_player_defeated() -> void:
 	ui_controller.close_pause_menu()
 	if ui_controller.has_method("close_shop_menu"):
 		ui_controller.close_shop_menu()
+
 	game_over = true
 	spawn_timer.stop()
-	_show_banner("游戏结束", 999.0)
+	_show_banner(GAME_OVER_BANNER_TEXT, 999.0)
 	_update_ui()
 
 func _on_enemy_defeated() -> void:
@@ -276,13 +259,23 @@ func _update_ui() -> void:
 	ui_controller.apply_hud(_build_hud_state())
 
 func _refresh_shop_ui() -> void:
-	if ui_controller == null or not ui_controller.has_method("is_shop_open") or not ui_controller.is_shop_open():
+	if shop_service == null:
 		return
 
-	if merchant_npc == null or not merchant_npc.has_method("build_shop_state"):
+	shop_service.refresh_open_shop()
+
+func _handle_shop_feedback(feedback: Dictionary) -> void:
+	if feedback.is_empty():
 		return
 
-	ui_controller.apply_shop_state(merchant_npc.build_shop_state(player))
+	var banner_text: String = str(feedback.get("banner_text", ""))
+	if not banner_text.is_empty():
+		_show_banner(
+			banner_text,
+			float(feedback.get("banner_duration", WaveDirectorScript.DEFAULT_BANNER_TIME))
+		)
+	elif bool(feedback.get("refresh_ui", false)):
+		_update_ui()
 
 func _start_next_wave() -> void:
 	wave_director.start_next_wave(spawn_timer)
@@ -376,39 +369,6 @@ func spawn_loot_drop(origin: Vector2, drop_data: Dictionary = {}) -> void:
 func find_walkable_point_near(origin: Vector2, radius: float) -> Vector2:
 	return cover_manager.find_walkable_point_near(origin, radius)
 
-func _pick_spawn_position() -> Vector2:
-	var visible_world_size := get_viewport_rect().size
-	if is_instance_valid(player) and player.has_method("get_camera_visible_world_size"):
-		visible_world_size = player.get_camera_visible_world_size()
-
-	var view_half_size := visible_world_size * 0.5
-	var horizontal_span := view_half_size.x + SPAWN_VIEW_MARGIN
-	var vertical_span := view_half_size.y + SPAWN_VIEW_MARGIN
-
-	for _attempt in range(40):
-		var side := randi_range(0, 3)
-		var candidate: Vector2 = player.global_position
-
-		match side:
-			0:
-				candidate += Vector2(randf_range(-horizontal_span, horizontal_span), -vertical_span)
-			1:
-				candidate += Vector2(horizontal_span, randf_range(-vertical_span, vertical_span))
-			2:
-				candidate += Vector2(randf_range(-horizontal_span, horizontal_span), vertical_span)
-			_:
-				candidate += Vector2(-horizontal_span, randf_range(-vertical_span, vertical_span))
-
-		candidate = _clamp_point_to_world(candidate)
-
-		if candidate.distance_to(player.global_position) < MIN_SPAWN_DISTANCE:
-			continue
-
-		if _is_point_walkable(candidate):
-			return candidate
-
-	return find_walkable_point_near(player.global_position, horizontal_span + 64.0)
-
 func _rebuild_navigation_region() -> void:
 	var navigation_polygon := NavigationPolygon.new()
 	navigation_polygon.agent_radius = NAVIGATION_MARGIN
@@ -417,6 +377,7 @@ func _rebuild_navigation_region() -> void:
 	navigation_polygon.parsed_collision_mask = 8
 	navigation_polygon.source_geometry_mode = NavigationPolygon.SOURCE_GEOMETRY_ROOT_NODE_CHILDREN
 	navigation_polygon.add_outline(_build_outline_from_rect(WORLD_RECT))
+
 	var source_geometry := NavigationMeshSourceGeometryData2D.new()
 	NavigationServer2D.parse_source_geometry_data(navigation_polygon, source_geometry, self)
 	NavigationServer2D.bake_from_source_geometry_data(navigation_polygon, source_geometry)
@@ -440,50 +401,14 @@ func _rebuild_navigation_region_deferred() -> void:
 
 func _build_outline_from_rect(rect: Rect2) -> PackedVector2Array:
 	var top_left := rect.position
-	var top_right := Vector2(rect.end.x, rect.position.y)
-	var bottom_right := rect.end
 	var bottom_left := Vector2(rect.position.x, rect.end.y)
+	var bottom_right := rect.end
+	var top_right := Vector2(rect.end.x, rect.position.y)
 
 	return PackedVector2Array([top_left, bottom_left, bottom_right, top_right])
 
 func _build_hud_state() -> Dictionary:
-	var gold := 0
-	var inventory_summary_text := ""
-	var inventory_panel_text := "空"
-	var inventory_items: Array[Dictionary] = []
-	var interaction_text := ""
-	if is_instance_valid(player):
-		gold = player.get_gold()
-		var inventory_snapshot: Dictionary = player.get_inventory_snapshot()
-		inventory_summary_text = str(inventory_snapshot.get("summary_text", "背包 0/8"))
-		inventory_panel_text = str(inventory_snapshot.get("panel_text", "空"))
-		var inventory_items_variant: Variant = inventory_snapshot.get("items", [])
-		if inventory_items_variant is Array:
-			for item_variant in inventory_items_variant:
-				if item_variant is Dictionary:
-					var item: Dictionary = item_variant
-					inventory_items.append(item.duplicate(true))
-	if is_instance_valid(merchant_npc) and merchant_npc.has_method("get_interaction_prompt"):
-		interaction_text = merchant_npc.get_interaction_prompt()
-	if ui_controller != null and ui_controller.has_method("is_shop_open") and ui_controller.is_shop_open():
-		interaction_text = ""
-
-	return {
-		"health": player.current_health,
-		"score": wave_director.score,
-		"gold": gold,
-		"wave": wave_director.current_wave,
-		"dash_ready": player.is_dash_ready(),
-		"dash_cooldown": player.get_dash_cooldown_remaining(),
-		"dash_ratio": player.get_dash_ratio(),
-		"weapon_name": player.get_weapon_name(),
-		"inventory_summary_text": inventory_summary_text,
-		"inventory_panel_text": inventory_panel_text,
-		"inventory_items": inventory_items,
-		"interaction_text": interaction_text,
-		"banner_text": wave_director.banner_text,
-		"game_over": game_over
-	}
+	return HUDStateBuilderScript.build_state(player, merchant_npc, ui_controller, wave_director, game_over)
 
 func _is_point_walkable(point: Vector2) -> bool:
 	return cover_manager.is_point_walkable(point)
