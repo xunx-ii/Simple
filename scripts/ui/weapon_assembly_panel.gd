@@ -17,6 +17,7 @@ var slot_buttons: Dictionary = {}
 var current_snapshot: Dictionary = {}
 
 var header_label: Label
+var header_meta_label: Label
 var subtitle_label: Label
 var status_label: Label
 var content_row: HBoxContainer
@@ -71,41 +72,49 @@ func _build_ui() -> void:
 	var root_layout := VBoxContainer.new()
 	root_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root_layout.add_theme_constant_override("separation", 6)
+	root_layout.add_theme_constant_override("separation", 8)
 	margin.add_child(root_layout)
 
+	var header_row := HBoxContainer.new()
+	header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_theme_constant_override("separation", 12)
+	root_layout.add_child(header_row)
+
 	header_label = Label.new()
+	header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_label.text = UITextsScript.WEAPON_ASSEMBLY_TITLE
 	_apply_font(header_label, 16)
-	root_layout.add_child(header_label)
+	header_row.add_child(header_label)
 
+	header_meta_label = Label.new()
+	header_meta_label.custom_minimum_size = Vector2(160.0, 0.0)
+	header_meta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	header_meta_label.modulate = Color(0.84, 0.9, 0.96, 0.9)
+	_apply_font(header_meta_label, 11)
+	header_row.add_child(header_meta_label)
+
+	# Keep legacy labels detached so old logic can write into them without
+	# bringing the removed prompt area back into the visible layout.
 	subtitle_label = Label.new()
-	subtitle_label.text = UITextsScript.WEAPON_ASSEMBLY_SUBTITLE
-	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	subtitle_label.max_lines_visible = 2
-	subtitle_label.modulate = Color(0.84, 0.9, 0.96, 0.9)
-	_apply_font(subtitle_label, 10)
-	root_layout.add_child(subtitle_label)
-
 	status_label = Label.new()
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.max_lines_visible = 2
-	status_label.modulate = Color(0.98, 0.44, 0.44, 0.92)
-	_apply_font(status_label, 10)
 	status_label.visible = false
-	root_layout.add_child(status_label)
+	var legacy_state_holder := Control.new()
+	legacy_state_holder.visible = false
+	add_child(legacy_state_holder)
+	legacy_state_holder.add_child(subtitle_label)
+	legacy_state_holder.add_child(status_label)
 
 	content_row = HBoxContainer.new()
 	content_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_row.add_theme_constant_override("separation", 8)
+	content_row.add_theme_constant_override("separation", 10)
 	root_layout.add_child(content_row)
 
 	schematic_root = Control.new()
 	schematic_root.custom_minimum_size = Vector2(0.0, 176.0)
 	schematic_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	schematic_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	schematic_root.size_flags_stretch_ratio = 1.25
+	schematic_root.size_flags_stretch_ratio = 1.0
 	content_row.add_child(schematic_root)
 	schematic_root.resized.connect(_on_layout_changed)
 
@@ -151,10 +160,10 @@ func _build_ui() -> void:
 		slot_buttons[slot_id] = button
 
 	detail_column = VBoxContainer.new()
-	detail_column.custom_minimum_size = Vector2(280.0, 0.0)
+	detail_column.custom_minimum_size = Vector2(332.0, 0.0)
 	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_column.size_flags_stretch_ratio = 1.0
+	detail_column.size_flags_stretch_ratio = 1.18
 	detail_column.add_theme_constant_override("separation", 8)
 	content_row.add_child(detail_column)
 
@@ -225,7 +234,7 @@ func _build_ui() -> void:
 
 	attachment_hint_label = Label.new()
 	attachment_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	attachment_hint_label.max_lines_visible = 2
+	attachment_hint_label.max_lines_visible = 1
 	attachment_hint_label.modulate = Color(0.83, 0.89, 0.96, 0.9)
 	_apply_font(attachment_hint_label, 10)
 	attachment_layout.add_child(attachment_hint_label)
@@ -281,6 +290,10 @@ func _refresh_panel() -> void:
 		UITextsScript.WEAPON_ASSEMBLY_SUBTITLE,
 		int(current_snapshot.get("warehouse_attachment_total", 0))
 	]
+	var selected_slot := _get_selected_slot_definition()
+	var selected_slot_name := str(selected_slot.get("display_name", ""))
+	var attachment_total := int(current_snapshot.get("warehouse_attachment_total", 0))
+	header_meta_label.text = "%s  x%d" % [selected_slot_name, attachment_total] if not selected_slot_name.is_empty() else "x%d" % attachment_total
 	status_label.visible = not status_label.text.is_empty()
 
 	_refresh_slot_buttons(slots)
@@ -514,8 +527,8 @@ func _update_schematic_layout() -> void:
 		return
 
 	var weapon_size := Vector2(
-		clampf(root_size.x * 0.58, 240.0, root_size.x - 132.0),
-		clampf(root_size.y * 0.52, 106.0, 148.0)
+		clampf(root_size.x * 0.62, 208.0, maxf(root_size.x - 108.0, 208.0)),
+		clampf(root_size.y * 0.5, 100.0, maxf(minf(root_size.y - 74.0, 144.0), 100.0))
 	)
 	weapon_frame.position = Vector2(
 		(root_size.x - weapon_size.x) * 0.5,
