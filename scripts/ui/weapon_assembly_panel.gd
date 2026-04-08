@@ -8,7 +8,7 @@ const UIThemeHelperScript = preload("res://scripts/ui/ui_theme_helper.gd")
 const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 const UIFont = preload("res://assets/fonts/vonwaon.ttf")
 
-const SLOT_BUTTON_SIZE := Vector2(120.0, 44.0)
+const SLOT_BUTTON_SIZE := Vector2(108.0, 40.0)
 const LINE_COLOR := Color(0.8, 0.22, 0.22, 0.92)
 const FRAME_BORDER_COLOR := Color(0.88, 0.28, 0.28, 0.94)
 
@@ -19,7 +19,9 @@ var current_snapshot: Dictionary = {}
 var header_label: Label
 var subtitle_label: Label
 var status_label: Label
+var content_row: HBoxContainer
 var schematic_root: Control
+var detail_column: VBoxContainer
 var weapon_frame: PanelContainer
 var weapon_name_label: Label
 var weapon_description_label: Label
@@ -63,38 +65,48 @@ func _build_ui() -> void:
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	UIThemeHelperScript.set_margin(margin, 16, 16, 16, 16)
+	UIThemeHelperScript.set_margin(margin, 8, 8, 8, 8)
 	add_child(margin)
 
 	var root_layout := VBoxContainer.new()
 	root_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root_layout.add_theme_constant_override("separation", 12)
+	root_layout.add_theme_constant_override("separation", 6)
 	margin.add_child(root_layout)
 
 	header_label = Label.new()
 	header_label.text = UITextsScript.WEAPON_ASSEMBLY_TITLE
-	_apply_font(header_label, 20)
+	_apply_font(header_label, 16)
 	root_layout.add_child(header_label)
 
 	subtitle_label = Label.new()
 	subtitle_label.text = UITextsScript.WEAPON_ASSEMBLY_SUBTITLE
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle_label.max_lines_visible = 2
 	subtitle_label.modulate = Color(0.84, 0.9, 0.96, 0.9)
-	_apply_font(subtitle_label, 12)
+	_apply_font(subtitle_label, 10)
 	root_layout.add_child(subtitle_label)
 
 	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.max_lines_visible = 2
 	status_label.modulate = Color(0.98, 0.44, 0.44, 0.92)
-	_apply_font(status_label, 12)
+	_apply_font(status_label, 10)
+	status_label.visible = false
 	root_layout.add_child(status_label)
 
+	content_row = HBoxContainer.new()
+	content_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_row.add_theme_constant_override("separation", 8)
+	root_layout.add_child(content_row)
+
 	schematic_root = Control.new()
-	schematic_root.custom_minimum_size = Vector2(0.0, 256.0)
+	schematic_root.custom_minimum_size = Vector2(0.0, 176.0)
 	schematic_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	schematic_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root_layout.add_child(schematic_root)
+	schematic_root.size_flags_stretch_ratio = 1.25
+	content_row.add_child(schematic_root)
 	schematic_root.resized.connect(_on_layout_changed)
 
 	weapon_frame = PanelContainer.new()
@@ -106,16 +118,16 @@ func _build_ui() -> void:
 	schematic_root.add_child(weapon_frame)
 
 	var weapon_margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(weapon_margin, 18, 18, 18, 18)
+	UIThemeHelperScript.set_margin(weapon_margin, 14, 14, 14, 14)
 	weapon_frame.add_child(weapon_margin)
 
 	var weapon_layout := VBoxContainer.new()
-	weapon_layout.add_theme_constant_override("separation", 10)
+	weapon_layout.add_theme_constant_override("separation", 8)
 	weapon_margin.add_child(weapon_layout)
 
 	weapon_name_label = Label.new()
 	weapon_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_apply_font(weapon_name_label, 22)
+	_apply_font(weapon_name_label, 16)
 	weapon_layout.add_child(weapon_name_label)
 
 	weapon_description_label = Label.new()
@@ -123,7 +135,7 @@ func _build_ui() -> void:
 	weapon_description_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	weapon_description_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	weapon_description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_apply_font(weapon_description_label, 12)
+	_apply_font(weapon_description_label, 10)
 	weapon_layout.add_child(weapon_description_label)
 
 	for slot_id in ["optic", "muzzle", "magazine", "stock"]:
@@ -138,38 +150,40 @@ func _build_ui() -> void:
 		schematic_root.add_child(button)
 		slot_buttons[slot_id] = button
 
-	var detail_row := HBoxContainer.new()
-	detail_row.custom_minimum_size = Vector2(0.0, 160.0)
-	detail_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_row.add_theme_constant_override("separation", 12)
-	root_layout.add_child(detail_row)
+	detail_column = VBoxContainer.new()
+	detail_column.custom_minimum_size = Vector2(280.0, 0.0)
+	detail_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_column.size_flags_stretch_ratio = 1.0
+	detail_column.add_theme_constant_override("separation", 8)
+	content_row.add_child(detail_column)
 
 	var stat_panel := PanelContainer.new()
 	stat_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stat_panel.size_flags_stretch_ratio = 0.95
+	stat_panel.size_flags_stretch_ratio = 0.78
 	stat_panel.add_theme_stylebox_override(
 		"panel",
 		UIThemeHelperScript.build_panel_style(Color(0.043, 0.054, 0.074, 1.0), 14, Color(0.23, 0.34, 0.42, 1.0))
 	)
-	detail_row.add_child(stat_panel)
+	detail_column.add_child(stat_panel)
 
 	var stat_margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(stat_margin, 12, 12, 12, 12)
+	UIThemeHelperScript.set_margin(stat_margin, 10, 10, 10, 10)
 	stat_panel.add_child(stat_margin)
 
 	var stat_layout := VBoxContainer.new()
 	stat_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stat_layout.add_theme_constant_override("separation", 10)
+	stat_layout.add_theme_constant_override("separation", 8)
 	stat_margin.add_child(stat_layout)
 
 	var stat_title := Button.new()
 	stat_title.text = UITextsScript.WEAPON_STATS_TITLE
 	stat_title.disabled = true
 	stat_title.focus_mode = Control.FOCUS_NONE
-	_apply_font(stat_title, 14)
+	stat_title.custom_minimum_size = Vector2(0.0, 28.0)
+	_apply_font(stat_title, 12)
 	stat_layout.add_child(stat_title)
 
 	stat_scroll = ScrollContainer.new()
@@ -185,33 +199,35 @@ func _build_ui() -> void:
 	var attachment_panel := PanelContainer.new()
 	attachment_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	attachment_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	attachment_panel.size_flags_stretch_ratio = 1.25
+	attachment_panel.size_flags_stretch_ratio = 1.22
 	attachment_panel.add_theme_stylebox_override(
 		"panel",
 		UIThemeHelperScript.build_panel_style(Color(0.043, 0.054, 0.074, 1.0), 14, Color(0.23, 0.34, 0.42, 1.0))
 	)
-	detail_row.add_child(attachment_panel)
+	detail_column.add_child(attachment_panel)
 
 	var attachment_margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(attachment_margin, 12, 12, 12, 12)
+	UIThemeHelperScript.set_margin(attachment_margin, 10, 10, 10, 10)
 	attachment_panel.add_child(attachment_margin)
 
 	var attachment_layout := VBoxContainer.new()
 	attachment_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	attachment_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	attachment_layout.add_theme_constant_override("separation", 10)
+	attachment_layout.add_theme_constant_override("separation", 8)
 	attachment_margin.add_child(attachment_layout)
 
 	attachment_title_button = Button.new()
 	attachment_title_button.disabled = true
 	attachment_title_button.focus_mode = Control.FOCUS_NONE
-	_apply_font(attachment_title_button, 14)
+	attachment_title_button.custom_minimum_size = Vector2(0.0, 28.0)
+	_apply_font(attachment_title_button, 12)
 	attachment_layout.add_child(attachment_title_button)
 
 	attachment_hint_label = Label.new()
 	attachment_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	attachment_hint_label.max_lines_visible = 2
 	attachment_hint_label.modulate = Color(0.83, 0.89, 0.96, 0.9)
-	_apply_font(attachment_hint_label, 12)
+	_apply_font(attachment_hint_label, 10)
 	attachment_layout.add_child(attachment_hint_label)
 
 	attachment_scroll = ScrollContainer.new()
@@ -221,11 +237,11 @@ func _build_ui() -> void:
 
 	attachment_items = VBoxContainer.new()
 	attachment_items.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	attachment_items.add_theme_constant_override("separation", 8)
+	attachment_items.add_theme_constant_override("separation", 6)
 	attachment_scroll.add_child(attachment_items)
 
 
-func _refresh_panel() -> void:
+func _refresh_panel_legacy() -> void:
 	current_snapshot = MetaProgressionStateScript.get_weapon_assembly_snapshot()
 	var slots: Array = current_snapshot.get("slots", [])
 	if slots.is_empty():
@@ -242,6 +258,30 @@ func _refresh_panel() -> void:
 	]
 	if status_label.text.is_empty():
 		status_label.text = UITextsScript.WEAPON_ATTACHMENT_LIST_HINT
+
+	_refresh_slot_buttons(slots)
+	_refresh_stats()
+	_refresh_attachment_list()
+	_update_schematic_layout()
+	queue_redraw()
+
+
+func _refresh_panel() -> void:
+	current_snapshot = MetaProgressionStateScript.get_weapon_assembly_snapshot()
+	var slots: Array = current_snapshot.get("slots", [])
+	if slots.is_empty():
+		return
+
+	if not _slot_exists(selected_slot_id, slots):
+		selected_slot_id = str(slots[0].get("id", ""))
+
+	weapon_name_label.text = str(current_snapshot.get("weapon_name", "Weapon"))
+	weapon_description_label.text = str(current_snapshot.get("weapon_description", ""))
+	subtitle_label.text = "%s (x%d)" % [
+		UITextsScript.WEAPON_ASSEMBLY_SUBTITLE,
+		int(current_snapshot.get("warehouse_attachment_total", 0))
+	]
+	status_label.visible = not status_label.text.is_empty()
 
 	_refresh_slot_buttons(slots)
 	_refresh_stats()
@@ -291,13 +331,13 @@ func _refresh_stats() -> void:
 		row_button.focus_mode = Control.FOCUS_NONE
 		row_button.flat = false
 		row_button.text = str(stat.get("display_text", ""))
-		row_button.custom_minimum_size = Vector2(0.0, 34.0)
+		row_button.custom_minimum_size = Vector2(0.0, 30.0)
 		row_button.tooltip_text = str(stat.get("label", ""))
-		_apply_font(row_button, 12)
+		_apply_font(row_button, 11)
 		stat_items.add_child(row_button)
 
 
-func _refresh_attachment_list() -> void:
+func _refresh_attachment_list_legacy() -> void:
 	for child in attachment_items.get_children():
 		attachment_items.remove_child(child)
 		child.queue_free()
@@ -325,6 +365,36 @@ func _refresh_attachment_list() -> void:
 		attachment_items.add_child(_build_attachment_entry(entry_variant))
 
 
+func _refresh_attachment_list() -> void:
+	for child in attachment_items.get_children():
+		attachment_items.remove_child(child)
+		child.queue_free()
+
+	var slot_definition := _get_selected_slot_definition()
+	attachment_title_button.text = "%s / %s" % [
+		UITextsScript.WEAPON_ATTACHMENT_LIST_TITLE,
+		str(slot_definition.get("display_name", "Slot"))
+	]
+	attachment_hint_label.text = str(
+		slot_definition.get("description", UITextsScript.WEAPON_ATTACHMENT_LIST_HINT)
+	)
+
+	var entries := MetaProgressionStateScript.get_weapon_attachment_entries(selected_slot_id)
+	if entries.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = UITextsScript.WEAPON_ATTACHMENT_EMPTY
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_apply_font(empty_label, 11)
+		attachment_items.add_child(empty_label)
+		return
+
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+
+		attachment_items.add_child(_build_attachment_entry(entry_variant))
+
+
 func _build_attachment_entry(entry: Dictionary) -> Control:
 	var card := PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -334,21 +404,21 @@ func _build_attachment_entry(entry: Dictionary) -> Control:
 	)
 
 	var margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(margin, 10, 10, 10, 10)
+	UIThemeHelperScript.set_margin(margin, 8, 8, 8, 8)
 	card.add_child(margin)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", 8)
 	margin.add_child(row)
 
 	var text_column := VBoxContainer.new()
 	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_column.add_theme_constant_override("separation", 4)
+	text_column.add_theme_constant_override("separation", 3)
 	row.add_child(text_column)
 
 	var name_label := Label.new()
 	name_label.text = str(entry.get("display_name", "配件"))
-	_apply_font(name_label, 14)
+	_apply_font(name_label, 13)
 	text_column.add_child(name_label)
 
 	var meta_text := str(entry.get("meta_text", ""))
@@ -356,18 +426,18 @@ func _build_attachment_entry(entry: Dictionary) -> Control:
 		var meta_label := Label.new()
 		meta_label.text = meta_text
 		meta_label.modulate = Color(0.73, 0.84, 0.94, 0.92)
-		_apply_font(meta_label, 11)
+		_apply_font(meta_label, 10)
 		text_column.add_child(meta_label)
 
 	var description_label := Label.new()
 	description_label.text = str(entry.get("description", ""))
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_apply_font(description_label, 11)
+	_apply_font(description_label, 10)
 	text_column.add_child(description_label)
 
 	var action_button := Button.new()
 	action_button.text = str(entry.get("action_text", "装配"))
-	action_button.custom_minimum_size = Vector2(82.0, 36.0)
+	action_button.custom_minimum_size = Vector2(76.0, 34.0)
 	action_button.disabled = not bool(entry.get("action_enabled", false))
 	action_button.focus_mode = Control.FOCUS_NONE
 	action_button.pressed.connect(_on_attachment_action_pressed.bind(str(entry.get("id", ""))))
@@ -379,6 +449,8 @@ func _build_attachment_entry(entry: Dictionary) -> Control:
 
 func _on_slot_button_pressed(slot_id: String) -> void:
 	selected_slot_id = slot_id
+	status_label.text = ""
+	status_label.visible = false
 	_refresh_slot_buttons(current_snapshot.get("slots", []))
 	_refresh_attachment_list()
 	queue_redraw()
@@ -388,6 +460,7 @@ func _on_attachment_action_pressed(attachment_id: String) -> void:
 	var result := MetaProgressionStateScript.equip_weapon_attachment(selected_slot_id, attachment_id)
 	if not bool(result.get("success", false)):
 		status_label.text = UITextsScript.WEAPON_ATTACHMENT_EQUIP_FAILED
+		status_label.visible = true
 		assembly_changed.emit(UITextsScript.WEAPON_ATTACHMENT_EQUIP_FAILED)
 		return
 
@@ -403,6 +476,7 @@ func _on_attachment_action_pressed(attachment_id: String) -> void:
 
 	_refresh_panel()
 	status_label.text = status_text
+	status_label.visible = true
 	assembly_changed.emit(status_text)
 
 
@@ -440,31 +514,20 @@ func _update_schematic_layout() -> void:
 		return
 
 	var weapon_size := Vector2(
-		clampf(root_size.x * 0.66, 340.0, root_size.x - 120.0),
-		clampf(root_size.y * 0.46, 144.0, 210.0)
+		clampf(root_size.x * 0.58, 240.0, root_size.x - 132.0),
+		clampf(root_size.y * 0.52, 106.0, 148.0)
 	)
 	weapon_frame.position = Vector2(
 		(root_size.x - weapon_size.x) * 0.5,
-		clampf((root_size.y - weapon_size.y) * 0.46, 54.0, root_size.y - weapon_size.y - 54.0)
+		clampf((root_size.y - weapon_size.y) * 0.5, 38.0, maxf(root_size.y - weapon_size.y - 38.0, 38.0))
 	)
 	weapon_frame.size = weapon_size
 
-	for slot_variant in current_snapshot.get("slots", []):
-		if not (slot_variant is Dictionary):
-			continue
-
-		var slot: Dictionary = slot_variant
-		var slot_id := str(slot.get("id", ""))
-		var button: Button = slot_buttons.get(slot_id)
-		if button == null:
-			continue
-
-		var anchor: Vector2 = slot.get("anchor", Vector2.ZERO)
-		button.position = Vector2(
-			root_size.x * anchor.x - SLOT_BUTTON_SIZE.x * 0.5,
-			root_size.y * anchor.y - SLOT_BUTTON_SIZE.y * 0.5
-		)
-		button.size = SLOT_BUTTON_SIZE
+	var weapon_rect := Rect2(weapon_frame.position, weapon_frame.size)
+	_position_slot_button("optic", Vector2(weapon_rect.get_center().x - SLOT_BUTTON_SIZE.x * 0.5, weapon_rect.position.y - 52.0), root_size)
+	_position_slot_button("muzzle", Vector2(weapon_rect.end.x - SLOT_BUTTON_SIZE.x * 0.32, weapon_rect.position.y - 8.0), root_size)
+	_position_slot_button("magazine", Vector2(weapon_rect.position.x - SLOT_BUTTON_SIZE.x + 18.0, weapon_rect.get_center().y - SLOT_BUTTON_SIZE.y * 0.5), root_size)
+	_position_slot_button("stock", Vector2(weapon_rect.get_center().x - SLOT_BUTTON_SIZE.x * 0.5, weapon_rect.end.y + 10.0), root_size)
 
 
 func _draw() -> void:
@@ -485,3 +548,15 @@ func _draw() -> void:
 
 func _apply_font(control: Control, font_size: int) -> void:
 	UIThemeHelperScript.apply_font(control, UIFont, font_size)
+
+
+func _position_slot_button(slot_id: String, target_position: Vector2, root_size: Vector2) -> void:
+	var button: Button = slot_buttons.get(slot_id)
+	if button == null:
+		return
+
+	button.size = SLOT_BUTTON_SIZE
+	button.position = Vector2(
+		clampf(target_position.x, 0.0, maxf(root_size.x - SLOT_BUTTON_SIZE.x, 0.0)),
+		clampf(target_position.y, 0.0, maxf(root_size.y - SLOT_BUTTON_SIZE.y, 0.0))
+	)
