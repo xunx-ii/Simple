@@ -248,12 +248,9 @@ func _build_detail_popup() -> void:
 
 func _refresh_level_data() -> void:
 	level_snapshots = LevelProgressStateScript.get_level_snapshots()
-
-	if selected_level_id.is_empty() or LevelProgressStateScript.get_level_definition(selected_level_id).is_empty():
-		var active_level := LevelProgressStateScript.get_active_level_definition()
-		selected_level_id = str(active_level.get("id", ""))
-		if selected_level_id.is_empty():
-			selected_level_id = LevelProgressStateScript.get_first_unlocked_level_id()
+	selected_level_id = LevelProgressStateScript.get_selected_level_id()
+	if selected_level_id.is_empty():
+		selected_level_id = LevelProgressStateScript.get_first_unlocked_level_id()
 
 	_refresh_level_widgets()
 	_update_tree_layout()
@@ -359,6 +356,7 @@ func _get_marker_center(level_id: String) -> Vector2:
 
 
 func _on_level_marker_pressed(level_id: String) -> void:
+	LevelProgressStateScript.select_level(level_id)
 	selected_level_id = level_id
 	_refresh_level_widgets()
 	_update_detail_popup()

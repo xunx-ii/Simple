@@ -65,7 +65,7 @@ func _ready() -> void:
 	_setup_player()
 	_setup_merchant()
 	_setup_services()
-	active_level = LevelProgressStateScript.get_active_level_definition()
+	active_level = LevelProgressStateScript.get_active_challenge_level_definition()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 

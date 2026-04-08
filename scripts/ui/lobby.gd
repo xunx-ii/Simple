@@ -33,6 +33,7 @@ var level_select_button: Button
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	LevelProgressStateScript.clear_active_challenge()
 	task_system = TaskSystemScript.new()
 	task_system.tasks_updated.connect(_on_tasks_updated)
 	input_settings_dialog = InputSettingsDialogScript.new()
