@@ -3,11 +3,12 @@ extends Control
 const LOBBY_SCENE_PATH := "res://scenes/lobby.tscn"
 const AGREEMENT_URL := "https://www.baidu.com"
 
-@onready var agreement_checkbox: CheckBox = $ContentCenter/ContentPanel/ContentMargin/Content/AgreementRow/AgreementCheckBox
-@onready var agreement_text: RichTextLabel = $ContentCenter/ContentPanel/ContentMargin/Content/AgreementRow/AgreementText
-@onready var start_button: Button = $ContentCenter/ContentPanel/ContentMargin/Content/StartButton
-@onready var about_button: Button = $ContentCenter/ContentPanel/ContentMargin/Content/AboutButton
-@onready var notice_label: Label = $ContentCenter/ContentPanel/ContentMargin/Content/NoticeLabel
+@onready var agreement_checkbox: CheckBox = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/AgreementCheckBox
+@onready var service_button: LinkButton = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/ServiceLinkButton
+@onready var privacy_button: LinkButton = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/PrivacyLinkButton
+@onready var start_button: Button = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/StartButton
+@onready var about_button: Button = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AboutButton
+@onready var notice_label: Label = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/NoticeLabel
 @onready var agreement_overlay: Control = $AgreementOverlay
 @onready var agreement_prompt_label: Label = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementPrompt
 @onready var agreement_yes_button: Button = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementButtons/AgreementYesButton
@@ -23,10 +24,6 @@ func _ready() -> void:
 	if tree != null:
 		tree.paused = false
 
-	agreement_text.text = (
-		"我已阅读并同意 [url=%s]服务协议[/url] 和 [url=%s]隐私协议[/url]"
-		% [AGREEMENT_URL, AGREEMENT_URL]
-	)
 	notice_label.text = (
 		"抵制不良游戏，拒绝盗版游戏。\n"
 		+ "注意自我保护，谨防受骗上当。\n"
@@ -35,16 +32,17 @@ func _ready() -> void:
 	)
 	agreement_prompt_label.text = "是否同意服务和隐私协议？"
 	about_body_label.text = (
-		"《Simple》当前提供主菜单与大厅界面原型，"
+		"《Simple》当前提供主菜单与大厅界面原型，\n"
 		+ "后续可以继续接入战斗、商店和角色成长流程。"
 	)
 
 	start_button.pressed.connect(_on_start_button_pressed)
 	about_button.pressed.connect(_on_about_button_pressed)
+	service_button.pressed.connect(_open_agreement_link)
+	privacy_button.pressed.connect(_open_agreement_link)
 	agreement_yes_button.pressed.connect(_on_agreement_yes_button_pressed)
 	agreement_no_button.pressed.connect(_on_agreement_no_button_pressed)
 	about_close_button.pressed.connect(_on_about_close_button_pressed)
-	agreement_text.meta_clicked.connect(_on_agreement_text_meta_clicked)
 
 	_set_overlay_visible(agreement_overlay, false)
 	_set_overlay_visible(about_overlay, false)
@@ -91,8 +89,8 @@ func _on_about_close_button_pressed() -> void:
 	_set_overlay_visible(about_overlay, false)
 
 
-func _on_agreement_text_meta_clicked(meta: Variant) -> void:
-	OS.shell_open(str(meta))
+func _open_agreement_link() -> void:
+	OS.shell_open(AGREEMENT_URL)
 
 
 func _set_overlay_visible(overlay: Control, should_show: bool) -> void:
