@@ -31,6 +31,7 @@ var detail_title_label: Label
 var detail_status_label: Label
 var detail_description_label: Label
 var detail_challenge_button: Button
+var detail_close_button: Button
 
 
 func _ready() -> void:
@@ -51,9 +52,7 @@ func open_dialog() -> void:
 
 
 func close_dialog() -> void:
-	selected_level_id = ""
-	if detail_popup != null:
-		detail_popup.visible = false
+	_clear_selected_level()
 	visible = false
 
 
@@ -160,12 +159,13 @@ func _build_level_nodes() -> void:
 		tree_root.add_child(container)
 
 		var button := Button.new()
-		button.flat = true
+		button.flat = false
 		button.focus_mode = Control.FOCUS_NONE
 		button.text = ""
 		button.custom_minimum_size = Vector2.ONE * MARKER_SIZE
 		button.size = Vector2.ONE * MARKER_SIZE
 		button.position = Vector2((MARKER_CONTAINER_SIZE.x - MARKER_SIZE) * 0.5, 0.0)
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.pressed.connect(_on_level_marker_pressed.bind(level_id))
 		container.add_child(button)
 
@@ -225,10 +225,22 @@ func _build_detail_popup() -> void:
 	detail_layout.add_theme_constant_override("separation", 8)
 	detail_margin.add_child(detail_layout)
 
+	var detail_header := HBoxContainer.new()
+	detail_header.add_theme_constant_override("separation", 8)
+	detail_layout.add_child(detail_header)
+
 	detail_title_label = Label.new()
 	detail_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_font(detail_title_label, 16)
-	detail_layout.add_child(detail_title_label)
+	detail_header.add_child(detail_title_label)
+
+	detail_close_button = Button.new()
+	detail_close_button.text = UITextsScript.CLOSE
+	detail_close_button.custom_minimum_size = Vector2(64.0, 28.0)
+	detail_close_button.pressed.connect(_on_detail_close_button_pressed)
+	_apply_font(detail_close_button, 12)
+	detail_header.add_child(detail_close_button)
 
 	detail_status_label = Label.new()
 	_apply_font(detail_status_label, 12)
@@ -428,6 +440,11 @@ func _on_challenge_button_pressed() -> void:
 	challenge_requested.emit(selected_level_id)
 
 
+func _on_detail_close_button_pressed() -> void:
+	_clear_selected_level()
+	_refresh_level_widgets()
+
+
 func _on_backdrop_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		close_dialog()
@@ -446,6 +463,12 @@ func _update_dialog_geometry() -> void:
 	dialog_panel.offset_right = width * 0.5
 	dialog_panel.offset_bottom = height * 0.5
 	_update_tree_layout()
+
+
+func _clear_selected_level() -> void:
+	selected_level_id = ""
+	if detail_popup != null:
+		detail_popup.visible = false
 
 
 func _apply_font(control: Control, font_size: int) -> void:
