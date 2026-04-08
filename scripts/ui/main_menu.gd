@@ -3,12 +3,12 @@ extends Control
 const LOBBY_SCENE_PATH := "res://scenes/lobby.tscn"
 const AGREEMENT_URL := "https://www.baidu.com"
 
-@onready var agreement_checkbox: CheckBox = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/AgreementCheckBox
-@onready var service_button: LinkButton = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/ServiceLinkButton
-@onready var privacy_button: LinkButton = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AgreementCenter/AgreementRow/PrivacyLinkButton
-@onready var start_button: Button = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/StartButton
-@onready var about_button: Button = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/AboutButton
-@onready var notice_label: Label = $SafeArea/Layout/ContentCenter/ContentPanel/ContentMargin/Content/NoticeLabel
+@onready var agreement_checkbox: CheckBox = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow/AgreementCheckBox
+@onready var service_button: LinkButton = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow/ServiceLinkButton
+@onready var privacy_button: LinkButton = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow/PrivacyLinkButton
+@onready var start_button: Button = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn/StartButton
+@onready var about_button: Button = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn/AboutButton
+@onready var notice_label: Label = $SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/NoticeLabel
 @onready var agreement_overlay: Control = $AgreementOverlay
 @onready var agreement_prompt_label: Label = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementPrompt
 @onready var agreement_yes_button: Button = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementButtons/AgreementYesButton

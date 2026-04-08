@@ -52,33 +52,33 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 34
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
 
 [node name="MainLayout" type="VBoxContainer" parent="SafeArea"]
 layout_mode = 2
 
 [node name="TopPanel" type="PanelContainer" parent="SafeArea/MainLayout"]
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
 theme_override_styles/panel = SubResource("1")
 
 [node name="TopMargin" type="MarginContainer" parent="SafeArea/MainLayout/TopPanel"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
 
 [node name="TopBar" type="HBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 12
+theme_override_constants/separation = 20
 
 [node name="PlayerColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(110, 0)
+custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -96,7 +96,7 @@ theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
 [node name="GoldColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(100, 0)
+custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -104,17 +104,19 @@ theme_override_constants/separation = 4
 [node name="GoldTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldColumn"]
 layout_mode = 2
 text = "金币"
+horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 12
 
 [node name="GoldValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldColumn"]
 layout_mode = 2
 text = "0"
+horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
 [node name="SettingsButton" type="Button" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(88, 48)
+custom_minimum_size = Vector2(104, 44)
 layout_mode = 2
 text = "设置"
 theme_override_fonts/font = ExtResource("2")
@@ -129,7 +131,7 @@ size_flags_vertical = 3
 layout_mode = 2
 
 [node name="TaskToggleButton" type="Button" parent="SafeArea/MainLayout/BottomBar"]
-custom_minimum_size = Vector2(136, 48)
+custom_minimum_size = Vector2(152, 44)
 layout_mode = 2
 text = "任务列表"
 theme_override_fonts/font = ExtResource("2")
@@ -138,28 +140,25 @@ theme_override_font_sizes/font_size = 16
 [node name="TaskPanel" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -191.0
-offset_top = -250.0
-offset_right = 191.0
-offset_bottom = 250.0
-grow_horizontal = 2
-grow_vertical = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -304.0
+offset_right = 388.0
+offset_bottom = -76.0
+grow_vertical = 0
 theme_override_styles/panel = SubResource("1")
 
 [node name="TaskMargin" type="MarginContainer" parent="TaskPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 18
+theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 18
+theme_override_constants/margin_bottom = 16
 
 [node name="TaskContent" type="VBoxContainer" parent="TaskPanel/TaskMargin"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="TaskHeader" type="HBoxContainer" parent="TaskPanel/TaskMargin/TaskContent"]
 layout_mode = 2
@@ -173,21 +172,21 @@ theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
 
 [node name="TaskCloseButton" type="Button" parent="TaskPanel/TaskMargin/TaskContent/TaskHeader"]
-custom_minimum_size = Vector2(72, 36)
+custom_minimum_size = Vector2(72, 34)
 layout_mode = 2
 text = "关闭"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
 [node name="TaskScroll" type="ScrollContainer" parent="TaskPanel/TaskMargin/TaskContent"]
-custom_minimum_size = Vector2(0, 400)
+custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="TaskItems" type="VBoxContainer" parent="TaskPanel/TaskMargin/TaskContent/TaskScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="SettingsOverlay" type="Control" parent="."]
 visible = false
@@ -209,17 +208,17 @@ grow_vertical = 2
 color = Color(0.0117647, 0.0156863, 0.027451, 0.78)
 
 [node name="SettingsDialog" type="PanelContainer" parent="SettingsOverlay"]
-custom_minimum_size = Vector2(340, 200)
+custom_minimum_size = Vector2(360, 210)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -170.0
-offset_top = -100.0
-offset_right = 170.0
-offset_bottom = 100.0
+offset_left = -180.0
+offset_top = -105.0
+offset_right = 180.0
+offset_bottom = 105.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("2")
