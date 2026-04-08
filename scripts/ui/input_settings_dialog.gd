@@ -8,16 +8,27 @@ const UIThemeHelperScript = preload("res://scripts/ui/ui_theme_helper.gd")
 const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 const UIFont = preload("res://assets/fonts/vonwaon.ttf")
 
+const SECTION_JOYSTICK := "joystick"
+const SECTION_AIM_BUTTON := "aim_button"
+const ROW_PRIMARY_MARGIN := "primary_margin"
+const ROW_BOTTOM_MARGIN := "margin_bottom"
+const ROW_SIZE := "size"
+
 var current_settings: Dictionary = {}
 var is_syncing_controls: bool = false
+var selected_section := SECTION_JOYSTICK
+var slider_labels: Dictionary = {}
 var slider_controls: Dictionary = {}
 var value_labels: Dictionary = {}
+var preview_selectors: Dictionary = {}
+var preview_selection_frames: Dictionary = {}
 
 var backdrop: ColorRect
 var dialog_panel: PanelContainer
 var preview_root: Control
 var preview_joystick: Control
 var preview_aim_button: Button
+var controls_title_label: Label
 
 
 func _ready() -> void:
@@ -151,7 +162,7 @@ func _build_ui() -> void:
 
 	preview_root = Control.new()
 	preview_root.clip_contents = true
-	preview_root.custom_minimum_size = Vector2(320.0, 148.0)
+	preview_root.custom_minimum_size = Vector2(340.0, 157.0)
 	preview_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	aspect.add_child(preview_root)
@@ -160,7 +171,7 @@ func _build_ui() -> void:
 	_build_preview_scene(preview_root)
 
 	var controls_panel := PanelContainer.new()
-	controls_panel.custom_minimum_size = Vector2(252.0, 0.0)
+	controls_panel.custom_minimum_size = Vector2(244.0, 0.0)
 	controls_panel.size_flags_horizontal = Control.SIZE_FILL
 	controls_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	controls_panel.add_theme_stylebox_override(
@@ -173,26 +184,21 @@ func _build_ui() -> void:
 	UIThemeHelperScript.set_margin(controls_margin, 12, 12, 12, 12)
 	controls_panel.add_child(controls_margin)
 
-	var controls_scroll := ScrollContainer.new()
-	controls_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	controls_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	controls_margin.add_child(controls_scroll)
-
 	var controls_layout := VBoxContainer.new()
 	controls_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	controls_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	controls_layout.add_theme_constant_override("separation", 10)
-	controls_scroll.add_child(controls_layout)
+	controls_margin.add_child(controls_layout)
 
-	controls_layout.add_child(_build_section_title(UITextsScript.INPUT_SETTINGS_JOYSTICK_SECTION))
-	controls_layout.add_child(_create_slider_row("joystick", "margin_left", UITextsScript.INPUT_SETTINGS_LEFT_MARGIN, 8.0, 280.0, 1.0))
-	controls_layout.add_child(_create_slider_row("joystick", "margin_bottom", UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN, 8.0, 180.0, 1.0))
-	controls_layout.add_child(_create_slider_row("joystick", "size", UITextsScript.INPUT_SETTINGS_SIZE, 112.0, 240.0, 1.0))
+	controls_title_label = _build_section_title("")
+	controls_layout.add_child(controls_title_label)
+	controls_layout.add_child(_create_slider_row(ROW_PRIMARY_MARGIN))
+	controls_layout.add_child(_create_slider_row(ROW_BOTTOM_MARGIN))
+	controls_layout.add_child(_create_slider_row(ROW_SIZE))
 
-	controls_layout.add_child(_build_section_title(UITextsScript.INPUT_SETTINGS_AIM_BUTTON_SECTION))
-	controls_layout.add_child(_create_slider_row("aim_button", "margin_right", UITextsScript.INPUT_SETTINGS_RIGHT_MARGIN, 8.0, 280.0, 1.0))
-	controls_layout.add_child(_create_slider_row("aim_button", "margin_bottom", UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN, 8.0, 180.0, 1.0))
-	controls_layout.add_child(_create_slider_row("aim_button", "size", UITextsScript.INPUT_SETTINGS_SIZE, 88.0, 220.0, 1.0))
+	var controls_spacer := Control.new()
+	controls_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	controls_layout.add_child(controls_spacer)
 
 	var footer_row := HBoxContainer.new()
 	footer_row.add_theme_constant_override("separation", 8)
@@ -281,6 +287,8 @@ func _build_preview_scene(root: Control) -> void:
 	preview_joystick = VirtualJoystickScript.new()
 	root.add_child(preview_joystick)
 	preview_joystick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if preview_joystick.has_method("set_controls_enabled"):
+		preview_joystick.set_controls_enabled(false)
 	if preview_joystick.has_method("reset_input"):
 		preview_joystick.reset_input()
 
@@ -288,6 +296,11 @@ func _build_preview_scene(root: Control) -> void:
 	root.add_child(preview_aim_button)
 	preview_aim_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview_aim_button.disabled = false
+
+	_create_preview_selector(SECTION_JOYSTICK)
+	_create_preview_selector(SECTION_AIM_BUTTON)
+	_create_preview_selection_frame(SECTION_JOYSTICK)
+	_create_preview_selection_frame(SECTION_AIM_BUTTON)
 
 
 func _build_preview_crosshair(root: Control) -> void:
@@ -334,19 +347,43 @@ func _add_crosshair_segment(parent: Control, offset: Vector2, segment_size: Vect
 	parent.add_child(segment)
 
 
-func _create_slider_row(
-	section_name: String,
-	key_name: String,
-	label_text: String,
-	min_value: float,
-	max_value: float,
-	step: float
-) -> Control:
+func _create_preview_selector(section_name: String) -> void:
+	var selector := Control.new()
+	selector.mouse_filter = Control.MOUSE_FILTER_STOP
+	selector.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	selector.gui_input.connect(_on_preview_selector_gui_input.bind(section_name))
+	preview_root.add_child(selector)
+	preview_selectors[section_name] = selector
+
+
+func _create_preview_selection_frame(section_name: String) -> void:
+	var frame := PanelContainer.new()
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_theme_stylebox_override("panel", _build_selection_frame_style())
+	preview_root.add_child(frame)
+	preview_selection_frames[section_name] = frame
+
+
+func _build_selection_frame_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.454902, 0.827451, 1.0, 0.96)
+	style.corner_radius_top_left = 18
+	style.corner_radius_top_right = 18
+	style.corner_radius_bottom_right = 18
+	style.corner_radius_bottom_left = 18
+	return style
+
+
+func _create_slider_row(row_id: String) -> Control:
 	var row := VBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 
 	var label := Label.new()
-	label.text = label_text
 	_apply_dialog_font(label, 12)
 	row.add_child(label)
 
@@ -355,11 +392,9 @@ func _create_slider_row(
 	row.add_child(controls_row)
 
 	var slider := HSlider.new()
-	slider.min_value = min_value
-	slider.max_value = max_value
-	slider.step = step
+	slider.step = 1.0
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slider.value_changed.connect(_on_slider_value_changed.bind(section_name, key_name))
+	slider.value_changed.connect(_on_slider_value_changed.bind(row_id))
 	controls_row.add_child(slider)
 
 	var value_label := Label.new()
@@ -368,9 +403,9 @@ func _create_slider_row(
 	_apply_dialog_font(value_label, 11)
 	controls_row.add_child(value_label)
 
-	var slider_id := "%s.%s" % [section_name, key_name]
-	slider_controls[slider_id] = slider
-	value_labels[slider_id] = value_label
+	slider_labels[row_id] = label
+	slider_controls[row_id] = slider
+	value_labels[row_id] = value_label
 	return row
 
 
@@ -382,11 +417,87 @@ func _build_section_title(text: String) -> Label:
 	return label
 
 
-func _on_slider_value_changed(value: float, section_name: String, key_name: String) -> void:
+func _get_section_config(section_name: String) -> Dictionary:
+	if section_name == SECTION_AIM_BUTTON:
+		return {
+			"title": UITextsScript.INPUT_SETTINGS_AIM_BUTTON_SECTION,
+			"fields": [
+				{
+					"row_id": ROW_PRIMARY_MARGIN,
+					"key": "margin_right",
+					"label": UITextsScript.INPUT_SETTINGS_RIGHT_MARGIN,
+					"min": 8.0,
+					"max": 280.0,
+					"step": 1.0
+				},
+				{
+					"row_id": ROW_BOTTOM_MARGIN,
+					"key": "margin_bottom",
+					"label": UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN,
+					"min": 8.0,
+					"max": 180.0,
+					"step": 1.0
+				},
+				{
+					"row_id": ROW_SIZE,
+					"key": "size",
+					"label": UITextsScript.INPUT_SETTINGS_SIZE,
+					"min": MobileInputSettingsScript.MIN_AIM_BUTTON_SIZE,
+					"max": MobileInputSettingsScript.MAX_AIM_BUTTON_SIZE,
+					"step": 1.0
+				}
+			]
+		}
+
+	return {
+		"title": UITextsScript.INPUT_SETTINGS_JOYSTICK_SECTION,
+		"fields": [
+			{
+				"row_id": ROW_PRIMARY_MARGIN,
+				"key": "margin_left",
+				"label": UITextsScript.INPUT_SETTINGS_LEFT_MARGIN,
+				"min": 8.0,
+				"max": 280.0,
+				"step": 1.0
+			},
+			{
+				"row_id": ROW_BOTTOM_MARGIN,
+				"key": "margin_bottom",
+				"label": UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN,
+				"min": 8.0,
+				"max": 180.0,
+				"step": 1.0
+			},
+			{
+				"row_id": ROW_SIZE,
+				"key": "size",
+				"label": UITextsScript.INPUT_SETTINGS_SIZE,
+				"min": MobileInputSettingsScript.MIN_JOYSTICK_SIZE,
+				"max": MobileInputSettingsScript.MAX_JOYSTICK_SIZE,
+				"step": 1.0
+			}
+		]
+	}
+
+
+func _get_field_config(section_name: String, row_id: String) -> Dictionary:
+	var config: Dictionary = _get_section_config(section_name)
+	for field_variant in config.get("fields", []):
+		var field: Dictionary = field_variant
+		if str(field.get("row_id", "")) == row_id:
+			return field
+	return {}
+
+
+func _on_slider_value_changed(value: float, row_id: String) -> void:
 	if is_syncing_controls:
 		return
 
-	current_settings[section_name][key_name] = value
+	var field_config := _get_field_config(selected_section, row_id)
+	if field_config.is_empty():
+		return
+
+	current_settings[selected_section][field_config["key"]] = value
 	current_settings = MobileInputSettingsScript.sanitize_settings(current_settings)
 	MobileInputSettingsScript.save_settings(current_settings)
 	_sync_controls_from_settings()
@@ -398,22 +509,58 @@ func _on_reset_button_pressed() -> void:
 	_sync_controls_from_settings()
 
 
-func _sync_controls_from_settings() -> void:
-	is_syncing_controls = true
-	current_settings = MobileInputSettingsScript.sanitize_settings(current_settings)
+func _on_preview_selector_gui_input(event: InputEvent, section_name: String) -> void:
+	var is_mouse_press: bool = event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed
+	var is_touch_press: bool = event is InputEventScreenTouch and event.pressed
+	if not is_mouse_press and not is_touch_press:
+		return
 
-	for slider_id in slider_controls.keys():
-		var key_parts: PackedStringArray = String(slider_id).split(".")
-		var section_name: String = key_parts[0]
-		var key_name: String = key_parts[1]
-		var slider: HSlider = slider_controls[slider_id]
-		var value_label: Label = value_labels[slider_id]
-		var section: Dictionary = current_settings.get(section_name, {})
-		var value := float(section.get(key_name, slider.value))
+	_select_section(section_name)
+	accept_event()
+
+
+func _select_section(section_name: String) -> void:
+	if section_name not in [SECTION_JOYSTICK, SECTION_AIM_BUTTON]:
+		return
+
+	selected_section = section_name
+	_refresh_selected_section_controls()
+	_update_preview_selection_frames()
+
+
+func _refresh_selected_section_controls() -> void:
+	if controls_title_label == null:
+		return
+
+	is_syncing_controls = true
+	var config: Dictionary = _get_section_config(selected_section)
+	controls_title_label.text = str(config.get("title", ""))
+
+	for field_variant in config.get("fields", []):
+		var field: Dictionary = field_variant
+		var row_id := str(field.get("row_id", ""))
+		var label: Label = slider_labels.get(row_id)
+		var slider: HSlider = slider_controls.get(row_id)
+		var value_label: Label = value_labels.get(row_id)
+		if label == null or slider == null or value_label == null:
+			continue
+
+		label.text = str(field.get("label", ""))
+		slider.min_value = float(field.get("min", 0.0))
+		slider.max_value = float(field.get("max", 0.0))
+		slider.step = float(field.get("step", 1.0))
+
+		var section: Dictionary = current_settings.get(selected_section, {})
+		var value := float(section.get(str(field.get("key", "")), slider.value))
 		slider.value = value
 		value_label.text = str(int(round(value)))
 
 	is_syncing_controls = false
+
+
+func _sync_controls_from_settings() -> void:
+	current_settings = MobileInputSettingsScript.sanitize_settings(current_settings)
+	_refresh_selected_section_controls()
 	_update_preview_layout()
 
 
@@ -422,7 +569,37 @@ func _update_preview_layout() -> void:
 		return
 
 	MobileInputSettingsScript.apply_to_controls(preview_root, preview_joystick, preview_aim_button, current_settings)
+	_match_overlay_to_control(preview_selectors.get(SECTION_JOYSTICK), preview_joystick)
+	_match_overlay_to_control(preview_selectors.get(SECTION_AIM_BUTTON), preview_aim_button)
+	_update_preview_selection_frames()
 	preview_root.queue_redraw()
+
+
+func _match_overlay_to_control(overlay: Control, source: Control, padding: float = 0.0) -> void:
+	if overlay == null or source == null:
+		return
+
+	overlay.anchor_left = source.anchor_left
+	overlay.anchor_top = source.anchor_top
+	overlay.anchor_right = source.anchor_right
+	overlay.anchor_bottom = source.anchor_bottom
+	overlay.offset_left = source.offset_left - padding
+	overlay.offset_top = source.offset_top - padding
+	overlay.offset_right = source.offset_right + padding
+	overlay.offset_bottom = source.offset_bottom + padding
+
+
+func _update_preview_selection_frames() -> void:
+	var joystick_frame: Control = preview_selection_frames.get(SECTION_JOYSTICK)
+	var aim_button_frame: Control = preview_selection_frames.get(SECTION_AIM_BUTTON)
+
+	if joystick_frame != null:
+		_match_overlay_to_control(joystick_frame, preview_joystick, 6.0)
+		joystick_frame.visible = selected_section == SECTION_JOYSTICK
+
+	if aim_button_frame != null:
+		_match_overlay_to_control(aim_button_frame, preview_aim_button, 6.0)
+		aim_button_frame.visible = selected_section == SECTION_AIM_BUTTON
 
 
 func _on_backdrop_gui_input(event: InputEvent) -> void:
