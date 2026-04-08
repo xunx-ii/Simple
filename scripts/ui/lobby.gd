@@ -72,6 +72,9 @@ func _ready() -> void:
 	if weapon_assembly_panel.has_signal("assembly_changed"):
 		weapon_assembly_panel.assembly_changed.connect(_on_weapon_assembly_changed)
 	weapon_assembly_host.add_child(weapon_assembly_panel)
+	weapon_assembly_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	weapon_assembly_panel.anchor_right = 1.0
+	weapon_assembly_panel.anchor_bottom = 1.0
 
 	_setup_bottom_buttons()
 

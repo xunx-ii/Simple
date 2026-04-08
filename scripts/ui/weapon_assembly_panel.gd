@@ -32,6 +32,13 @@ var attachment_items: VBoxContainer
 
 
 func _ready() -> void:
+	anchors_preset = PRESET_FULL_RECT
+	anchor_right = 1.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -134,12 +141,14 @@ func _build_ui() -> void:
 	var detail_row := HBoxContainer.new()
 	detail_row.custom_minimum_size = Vector2(0.0, 160.0)
 	detail_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_row.add_theme_constant_override("separation", 12)
 	root_layout.add_child(detail_row)
 
 	var stat_panel := PanelContainer.new()
 	stat_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stat_panel.size_flags_stretch_ratio = 0.95
 	stat_panel.add_theme_stylebox_override(
 		"panel",
 		UIThemeHelperScript.build_panel_style(Color(0.043, 0.054, 0.074, 1.0), 14, Color(0.23, 0.34, 0.42, 1.0))
@@ -176,6 +185,7 @@ func _build_ui() -> void:
 	var attachment_panel := PanelContainer.new()
 	attachment_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	attachment_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	attachment_panel.size_flags_stretch_ratio = 1.25
 	attachment_panel.add_theme_stylebox_override(
 		"panel",
 		UIThemeHelperScript.build_panel_style(Color(0.043, 0.054, 0.074, 1.0), 14, Color(0.23, 0.34, 0.42, 1.0))
@@ -429,10 +439,13 @@ func _update_schematic_layout() -> void:
 	if root_size.x <= 0.0 or root_size.y <= 0.0:
 		return
 
-	var weapon_size := Vector2(root_size.x * 0.72, clampf(root_size.y * 0.54, 132.0, 184.0))
+	var weapon_size := Vector2(
+		clampf(root_size.x * 0.66, 340.0, root_size.x - 120.0),
+		clampf(root_size.y * 0.46, 144.0, 210.0)
+	)
 	weapon_frame.position = Vector2(
 		(root_size.x - weapon_size.x) * 0.5,
-		(root_size.y - weapon_size.y) * 0.35
+		clampf((root_size.y - weapon_size.y) * 0.46, 54.0, root_size.y - weapon_size.y - 54.0)
 	)
 	weapon_frame.size = weapon_size
 
