@@ -51,6 +51,9 @@ func open_dialog() -> void:
 
 
 func close_dialog() -> void:
+	selected_level_id = ""
+	if detail_popup != null:
+		detail_popup.visible = false
 	visible = false
 
 
@@ -248,9 +251,7 @@ func _build_detail_popup() -> void:
 
 func _refresh_level_data() -> void:
 	level_snapshots = LevelProgressStateScript.get_level_snapshots()
-	selected_level_id = LevelProgressStateScript.get_selected_level_id()
-	if selected_level_id.is_empty():
-		selected_level_id = LevelProgressStateScript.get_first_unlocked_level_id()
+	selected_level_id = ""
 
 	_refresh_level_widgets()
 	_update_tree_layout()
