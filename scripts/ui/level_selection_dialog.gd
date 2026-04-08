@@ -10,7 +10,7 @@ const UIFont = preload("res://assets/fonts/vonwaon.ttf")
 
 const MARKER_SIZE := 24.0
 const MARKER_CONTAINER_SIZE := Vector2(84.0, 54.0)
-const DETAIL_POPUP_SIZE := Vector2(248.0, 150.0)
+const DETAIL_POPUP_SIZE := Vector2(248.0, 176.0)
 const LINE_COLOR := Color(0.321569, 0.419608, 0.505882, 0.82)
 const COMPLETED_COLOR := Color(0.345098, 0.933333, 0.584314, 1.0)
 const AVAILABLE_COLOR := Color(0.96, 0.98, 1.0, 1.0)
@@ -29,6 +29,7 @@ var tree_root: Control
 var detail_popup: PanelContainer
 var detail_title_label: Label
 var detail_status_label: Label
+var detail_description_scroll: ScrollContainer
 var detail_description_label: Label
 var detail_challenge_button: Button
 var detail_close_button: Button
@@ -246,12 +247,16 @@ func _build_detail_popup() -> void:
 	_apply_font(detail_status_label, 12)
 	detail_layout.add_child(detail_status_label)
 
+	detail_description_scroll = ScrollContainer.new()
+	detail_description_scroll.custom_minimum_size = Vector2(0.0, 56.0)
+	detail_description_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_layout.add_child(detail_description_scroll)
+
 	detail_description_label = Label.new()
-	detail_description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_description_label.vertical_alignment = VERTICAL_ALIGNMENT_FILL
+	detail_description_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_apply_font(detail_description_label, 12)
-	detail_layout.add_child(detail_description_label)
+	detail_description_scroll.add_child(detail_description_label)
 
 	detail_challenge_button = Button.new()
 	detail_challenge_button.custom_minimum_size = Vector2(0.0, 38.0)
@@ -400,7 +405,10 @@ func _update_detail_popup() -> void:
 		detail_status_label.modulate = LOCKED_COLOR.lightened(0.35)
 
 	detail_challenge_button.disabled = not bool(snapshot.get("unlocked", false))
+	detail_challenge_button.visible = true
+	detail_popup.size = DETAIL_POPUP_SIZE
 	_update_detail_popup_position()
+	call_deferred("_update_detail_popup_position")
 
 
 func _update_detail_popup_position() -> void:
