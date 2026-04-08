@@ -1,6 +1,8 @@
 class_name TaskChainService
 extends RefCounted
 
+const TaskTextsScript = preload("res://scripts/systems/tasks/task_texts.gd")
+
 const STATUS_LOCKED := "locked"
 const STATUS_AVAILABLE := "available"
 const STATUS_ACCEPTED := "accepted"
@@ -32,9 +34,9 @@ func get_chain_snapshots() -> Array:
 		chain_snapshots.append(
 			{
 				"id": str(chain.get("id", "")),
-				"title": str(chain.get("title", "任务链")),
+				"title": str(chain.get("title", TaskTextsScript.DEFAULT_CHAIN_TITLE)),
 				"description": str(chain.get("description", "")),
-				"summary_text": "%d/%d 已完成" % [completed_count, total_count],
+				"summary_text": TaskTextsScript.chain_summary_text(completed_count, total_count),
 				"tasks": task_snapshots
 			}
 		)
@@ -139,47 +141,15 @@ func _build_task_snapshot(task: Dictionary) -> Dictionary:
 
 	return {
 		"id": str(task.get("id", "")),
-		"title": str(task.get("title", "任务")),
+		"title": str(task.get("title", TaskTextsScript.DEFAULT_TASK_TITLE)),
 		"description": str(task.get("description", "")),
 		"reward": int(task.get("reward", 0)),
 		"status": status,
-		"status_text": _get_status_text(status),
-		"progress_text": "进度 %d/%d" % [progress, target],
-		"action_label": _get_action_label(status),
+		"status_text": TaskTextsScript.status_text(status),
+		"progress_text": TaskTextsScript.progress_text(progress, target),
+		"action_label": TaskTextsScript.action_label(status),
 		"action_enabled": _is_action_enabled(status)
 	}
-
-
-func _get_status_text(status: String) -> String:
-	match status:
-		STATUS_LOCKED:
-			return "未解锁"
-		STATUS_AVAILABLE:
-			return "可接受"
-		STATUS_ACCEPTED:
-			return "进行中"
-		STATUS_READY_TO_COMPLETE:
-			return "可提交"
-		STATUS_COMPLETED:
-			return "已完成"
-		_:
-			return "未知"
-
-
-func _get_action_label(status: String) -> String:
-	match status:
-		STATUS_LOCKED:
-			return "未解锁"
-		STATUS_AVAILABLE:
-			return "接受任务"
-		STATUS_ACCEPTED:
-			return "推进任务"
-		STATUS_READY_TO_COMPLETE:
-			return "完成任务"
-		STATUS_COMPLETED:
-			return "已完成"
-		_:
-			return "不可用"
 
 
 func _is_action_enabled(status: String) -> bool:

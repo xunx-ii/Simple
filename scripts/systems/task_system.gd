@@ -5,8 +5,9 @@ signal tasks_updated(task_chains: Array, total_gold: int)
 
 const TaskChainRepositoryScript = preload("res://scripts/systems/tasks/task_chain_repository.gd")
 const TaskChainServiceScript = preload("res://scripts/systems/tasks/task_chain_service.gd")
+const TaskTextsScript = preload("res://scripts/systems/tasks/task_texts.gd")
 
-var _player_name := "测试玩家"
+var _player_name := TaskTextsScript.DEFAULT_PLAYER_NAME
 var _gold := 1200
 var _task_chain_service
 

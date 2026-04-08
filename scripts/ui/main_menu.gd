@@ -2,18 +2,25 @@ extends Control
 
 const LOBBY_SCENE_PATH := "res://scenes/lobby.tscn"
 const AGREEMENT_URL := "https://www.baidu.com"
+const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 
+@onready var subtitle_label: Label = $SafeArea/ContentPanel/ContentMargin/Content/LeftSection/LeftColumn/SubtitleLabel
 @onready var agreement_checkbox: CheckBox = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/AgreementCenter/AgreementRow/AgreementCheckBox
+@onready var agreement_prefix_label: Label = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/AgreementCenter/AgreementRow/AgreementPrefixLabel
 @onready var service_button: LinkButton = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/AgreementCenter/AgreementRow/ServiceLinkButton
+@onready var agreement_connector_label: Label = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/AgreementCenter/AgreementRow/AgreementConnectorLabel
 @onready var privacy_button: LinkButton = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/AgreementCenter/AgreementRow/PrivacyLinkButton
 @onready var start_button: Button = $SafeArea/ContentPanel/ContentMargin/Content/LeftSection/LeftColumn/StartButton
 @onready var about_button: Button = $SafeArea/ContentPanel/ContentMargin/Content/LeftSection/LeftColumn/AboutButton
+@onready var notice_title_label: Label = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/NoticeTitleLabel
 @onready var notice_label: Label = $SafeArea/ContentPanel/ContentMargin/Content/RightSection/RightColumn/NoticeLabel
 @onready var agreement_overlay: Control = $AgreementOverlay
+@onready var agreement_title_label: Label = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementTitle
 @onready var agreement_prompt_label: Label = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementPrompt
 @onready var agreement_yes_button: Button = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementButtons/AgreementYesButton
 @onready var agreement_no_button: Button = $AgreementOverlay/AgreementDialog/AgreementMargin/AgreementContent/AgreementButtons/AgreementNoButton
 @onready var about_overlay: Control = $AboutOverlay
+@onready var about_title_label: Label = $AboutOverlay/AboutDialog/AboutMargin/AboutContent/AboutTitle
 @onready var about_body_label: Label = $AboutOverlay/AboutDialog/AboutMargin/AboutContent/AboutBody
 @onready var about_close_button: Button = $AboutOverlay/AboutDialog/AboutMargin/AboutContent/AboutCloseButton
 
@@ -24,17 +31,7 @@ func _ready() -> void:
 	if tree != null:
 		tree.paused = false
 
-	notice_label.text = (
-		"抵制不良游戏，拒绝盗版游戏。\n"
-		+ "注意自我保护，谨防受骗上当。\n"
-		+ "适度游戏益脑，沉迷游戏伤身。\n"
-		+ "合理安排时间，享受健康生活。"
-	)
-	agreement_prompt_label.text = "是否同意服务和隐私协议？"
-	about_body_label.text = (
-		"《Simple》当前提供主菜单与大厅界面原型，\n"
-		+ "后续可以继续接入战斗、商店和角色成长流程。"
-	)
+	_apply_static_texts()
 
 	start_button.pressed.connect(_on_start_button_pressed)
 	about_button.pressed.connect(_on_about_button_pressed)
@@ -46,6 +43,25 @@ func _ready() -> void:
 
 	_set_overlay_visible(agreement_overlay, false)
 	_set_overlay_visible(about_overlay, false)
+
+
+func _apply_static_texts() -> void:
+	subtitle_label.text = UITextsScript.MAIN_MENU_SUBTITLE
+	start_button.text = UITextsScript.MAIN_MENU_START
+	about_button.text = UITextsScript.MAIN_MENU_ABOUT
+	notice_title_label.text = UITextsScript.MAIN_MENU_NOTICE_TITLE
+	notice_label.text = UITextsScript.main_menu_notice_text()
+	agreement_prefix_label.text = UITextsScript.MAIN_MENU_AGREEMENT_PREFIX
+	agreement_connector_label.text = UITextsScript.MAIN_MENU_AGREEMENT_CONNECTOR
+	service_button.text = UITextsScript.MAIN_MENU_SERVICE_AGREEMENT
+	privacy_button.text = UITextsScript.MAIN_MENU_PRIVACY_AGREEMENT
+	agreement_title_label.text = UITextsScript.MAIN_MENU_AGREEMENT_TITLE
+	agreement_prompt_label.text = UITextsScript.MAIN_MENU_AGREEMENT_PROMPT
+	agreement_yes_button.text = UITextsScript.MAIN_MENU_CONFIRM_YES
+	agreement_no_button.text = UITextsScript.MAIN_MENU_CONFIRM_NO
+	about_title_label.text = UITextsScript.MAIN_MENU_ABOUT
+	about_body_label.text = UITextsScript.main_menu_about_body()
+	about_close_button.text = UITextsScript.CLOSE
 
 
 func _unhandled_input(event: InputEvent) -> void:

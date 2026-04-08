@@ -3,18 +3,24 @@ extends Control
 const TaskSystemScript = preload("res://scripts/systems/task_system.gd")
 const TaskPanelRendererScript = preload("res://scripts/ui/task_panel_renderer.gd")
 const InputSettingsDialogScript = preload("res://scripts/ui/input_settings_dialog.gd")
+const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 
 var task_system
 var input_settings_dialog: Control
 
+@onready var player_title_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn/PlayerTitleLabel
 @onready var player_name_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn/PlayerValueLabel
+@onready var gold_title_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldTitleLabel
 @onready var gold_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldValueLabel
 @onready var task_toggle_button: Button = $SafeArea/MainLayout/BottomBar/TaskToggleButton
 @onready var task_panel: PanelContainer = $TaskPanel
+@onready var task_title_label: Label = $TaskPanel/TaskMargin/TaskContent/TaskHeader/TaskTitle
 @onready var task_items_container: VBoxContainer = $TaskPanel/TaskMargin/TaskContent/TaskScroll/TaskItems
 @onready var task_close_button: Button = $TaskPanel/TaskMargin/TaskContent/TaskHeader/TaskCloseButton
 @onready var settings_button: Button = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsSection/SettingsButton
 @onready var settings_overlay: Control = $SettingsOverlay
+@onready var settings_title_label: Label = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/SettingsTitle
+@onready var settings_body_label: Label = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/SettingsBody
 @onready var input_settings_button: Button = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/InputSettingsButton
 @onready var settings_close_button: Button = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/SettingsCloseButton
 
@@ -32,9 +38,22 @@ func _ready() -> void:
 	task_toggle_button.pressed.connect(_on_task_toggle_button_pressed)
 	task_close_button.pressed.connect(_close_task_panel)
 
+	_apply_static_texts()
 	settings_overlay.visible = false
 	task_panel.visible = false
 	_apply_task_state(task_system.get_player_name(), task_system.get_gold(), task_system.get_task_chains())
+
+
+func _apply_static_texts() -> void:
+	player_title_label.text = UITextsScript.LOBBY_PLAYER_TITLE
+	gold_title_label.text = UITextsScript.LOBBY_GOLD_TITLE
+	settings_button.text = UITextsScript.SETTINGS
+	task_title_label.text = UITextsScript.TASK_PANEL_TITLE
+	task_close_button.text = UITextsScript.CLOSE
+	settings_title_label.text = UITextsScript.SETTINGS
+	settings_body_label.text = UITextsScript.LOBBY_SETTINGS_BODY
+	input_settings_button.text = UITextsScript.INPUT_SETTINGS
+	settings_close_button.text = UITextsScript.CLOSE
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -123,13 +142,4 @@ func _refresh_task_button_text(task_chains: Array) -> void:
 			if status != "locked" and status != "completed":
 				pending_count += 1
 
-	var base_label := "鏀惰捣浠诲姟" if task_panel.visible else "浠诲姟鍒楄〃"
-	if ready_count > 0:
-		task_toggle_button.text = "%s (%d 鍙彁浜?" % [base_label, ready_count]
-		return
-
-	if pending_count > 0:
-		task_toggle_button.text = "%s (%d)" % [base_label, pending_count]
-		return
-
-	task_toggle_button.text = base_label
+	task_toggle_button.text = UITextsScript.task_toggle_button_text(task_panel.visible, ready_count, pending_count)

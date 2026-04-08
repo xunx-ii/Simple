@@ -89,14 +89,14 @@ theme_override_constants/separation = 4
 
 [node name="PlayerTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn"]
 layout_mode = 2
-text = "鐜╁鍚嶅瓧"
+text = "玩家名字"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 12
 
 [node name="PlayerValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn"]
 layout_mode = 2
-text = "娴嬭瘯鐜╁"
+text = "测试玩家"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
@@ -116,7 +116,7 @@ theme_override_constants/separation = 4
 
 [node name="GoldTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn"]
 layout_mode = 2
-text = "閲戝竵"
+text = "金币"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 12
@@ -138,7 +138,7 @@ size_flags_horizontal = 3
 [node name="SettingsButton" type="Button" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsSection"]
 custom_minimum_size = Vector2(108, 44)
 layout_mode = 2
-text = "璁剧疆"
+text = "设置"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
@@ -153,7 +153,7 @@ layout_mode = 2
 [node name="TaskToggleButton" type="Button" parent="SafeArea/MainLayout/BottomBar"]
 custom_minimum_size = Vector2(170, 44)
 layout_mode = 2
-text = "浠诲姟鍒楄〃"
+text = "任务列表"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
@@ -187,14 +187,14 @@ theme_override_constants/separation = 10
 [node name="TaskTitle" type="Label" parent="TaskPanel/TaskMargin/TaskContent/TaskHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "浠诲姟鍒楄〃"
+text = "任务列表"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
 
 [node name="TaskCloseButton" type="Button" parent="TaskPanel/TaskMargin/TaskContent/TaskHeader"]
 custom_minimum_size = Vector2(72, 34)
 layout_mode = 2
-text = "鍏抽棴"
+text = "关闭"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
@@ -256,7 +256,7 @@ theme_override_constants/separation = 16
 
 [node name="SettingsTitle" type="Label" parent="SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent"]
 layout_mode = 2
-text = "璁剧疆"
+text = "设置"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
@@ -280,6 +280,6 @@ theme_override_font_sizes/font_size = 16
 [node name="SettingsCloseButton" type="Button" parent="SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "鍏抽棴"
+text = "关闭"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16

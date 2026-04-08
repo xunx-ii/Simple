@@ -4,21 +4,9 @@ extends Control
 const MobileInputSettingsScript = preload("res://scripts/systems/mobile_input_settings.gd")
 const VirtualJoystickScript = preload("res://scripts/ui/virtual_joystick.gd")
 const CircularActionButtonScript = preload("res://scripts/ui/circular_action_button.gd")
+const UIThemeHelperScript = preload("res://scripts/ui/ui_theme_helper.gd")
+const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 const UIFont = preload("res://assets/fonts/vonwaon.ttf")
-
-const TITLE_TEXT := "\u8f93\u5165\u8bbe\u7f6e"
-const CLOSE_TEXT := "\u5173\u95ed"
-const SUBTITLE_TEXT := "\u6218\u6597\u7f29\u5f71\u4f1a\u5b9e\u65f6\u9884\u89c8\u6447\u6746\u548c\u7784\u51c6\u6309\u94ae\u7684\u5e03\u5c40\u3002"
-const PREVIEW_TITLE_TEXT := "\u6218\u6597\u7f29\u5f71"
-const JOYSTICK_SECTION_TEXT := "\u865a\u62df\u6447\u6746"
-const AIM_BUTTON_SECTION_TEXT := "\u7784\u51c6\u6309\u94ae"
-const LEFT_MARGIN_TEXT := "\u5de6\u8fb9\u8ddd"
-const RIGHT_MARGIN_TEXT := "\u53f3\u8fb9\u8ddd"
-const BOTTOM_MARGIN_TEXT := "\u5e95\u8fb9\u8ddd"
-const SIZE_TEXT := "\u5c3a\u5bf8"
-const HINT_TEXT := "\u62d6\u52a8\u6ed1\u5757\u540e\u4f1a\u7acb\u5373\u4fdd\u5b58\uff0c\u4e0b\u6b21\u8fdb\u5165\u6218\u6597\u573a\u666f\u4f1a\u81ea\u52a8\u5e94\u7528\u3002"
-const RESET_TEXT := "\u6062\u590d\u9ed8\u8ba4"
-const DONE_TEXT := "\u5b8c\u6210"
 
 var current_settings: Dictionary = {}
 var is_syncing_controls: bool = false
@@ -88,19 +76,16 @@ func _build_ui() -> void:
 	dialog_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	dialog_panel.add_theme_stylebox_override(
 		"panel",
-		_make_panel_style(
-		Color(0.0588235, 0.0705882, 0.0941176, 0.98),
-		Color(0.396078, 0.501961, 0.592157, 1.0),
-		18
+		UIThemeHelperScript.build_panel_style(
+			Color(0.0588235, 0.0705882, 0.0941176, 0.98),
+			18,
+			Color(0.396078, 0.501961, 0.592157, 1.0)
 		)
 	)
 	add_child(dialog_panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	UIThemeHelperScript.set_margin(margin, 18, 18, 18, 18)
 	dialog_panel.add_child(margin)
 
 	var root_layout := VBoxContainer.new()
@@ -114,22 +99,22 @@ func _build_ui() -> void:
 	root_layout.add_child(title_row)
 
 	var title_label := Label.new()
-	title_label.text = TITLE_TEXT
+	title_label.text = UITextsScript.INPUT_SETTINGS
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_font(title_label, 22)
+	_apply_dialog_font(title_label, 22)
 	title_row.add_child(title_label)
 
 	var close_button := Button.new()
-	close_button.text = CLOSE_TEXT
+	close_button.text = UITextsScript.CLOSE
 	close_button.custom_minimum_size = Vector2(82.0, 36.0)
 	close_button.pressed.connect(close_dialog)
-	_apply_font(close_button, 14)
+	_apply_dialog_font(close_button, 14)
 	title_row.add_child(close_button)
 
 	var subtitle_label := Label.new()
-	subtitle_label.text = SUBTITLE_TEXT
+	subtitle_label.text = UITextsScript.INPUT_SETTINGS_SUBTITLE
 	subtitle_label.modulate = Color(0.8, 0.88, 0.94, 0.84)
-	_apply_font(subtitle_label, 13)
+	_apply_dialog_font(subtitle_label, 13)
 	root_layout.add_child(subtitle_label)
 
 	var content_row := HBoxContainer.new()
@@ -145,8 +130,8 @@ func _build_ui() -> void:
 	content_row.add_child(preview_column)
 
 	var preview_title := Label.new()
-	preview_title.text = PREVIEW_TITLE_TEXT
-	_apply_font(preview_title, 16)
+	preview_title.text = UITextsScript.INPUT_SETTINGS_PREVIEW_TITLE
+	_apply_dialog_font(preview_title, 16)
 	preview_column.add_child(preview_title)
 
 	var preview_frame := PanelContainer.new()
@@ -154,21 +139,14 @@ func _build_ui() -> void:
 	preview_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview_frame.add_theme_stylebox_override(
 		"panel",
-		_make_panel_style(
-		Color(0.043, 0.054, 0.074, 1.0),
-		Color(0.23, 0.34, 0.42, 1.0),
-		14
-		)
+		UIThemeHelperScript.build_panel_style(Color(0.043, 0.054, 0.074, 1.0), 14, Color(0.23, 0.34, 0.42, 1.0))
 	)
 	preview_column.add_child(preview_frame)
 
 	var preview_margin := MarginContainer.new()
 	preview_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview_margin.add_theme_constant_override("margin_left", 10)
-	preview_margin.add_theme_constant_override("margin_top", 10)
-	preview_margin.add_theme_constant_override("margin_right", 10)
-	preview_margin.add_theme_constant_override("margin_bottom", 10)
+	UIThemeHelperScript.set_margin(preview_margin, 10, 10, 10, 10)
 	preview_frame.add_child(preview_margin)
 
 	var aspect := AspectRatioContainer.new()
@@ -192,19 +170,12 @@ func _build_ui() -> void:
 	controls_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	controls_panel.add_theme_stylebox_override(
 		"panel",
-		_make_panel_style(
-		Color(0.066, 0.08, 0.11, 0.98),
-		Color(0.24, 0.34, 0.42, 0.92),
-		14
-		)
+		UIThemeHelperScript.build_panel_style(Color(0.066, 0.08, 0.11, 0.98), 14, Color(0.24, 0.34, 0.42, 0.92))
 	)
 	content_row.add_child(controls_panel)
 
 	var controls_margin := MarginContainer.new()
-	controls_margin.add_theme_constant_override("margin_left", 14)
-	controls_margin.add_theme_constant_override("margin_top", 14)
-	controls_margin.add_theme_constant_override("margin_right", 14)
-	controls_margin.add_theme_constant_override("margin_bottom", 14)
+	UIThemeHelperScript.set_margin(controls_margin, 14, 14, 14, 14)
 	controls_panel.add_child(controls_margin)
 
 	var controls_layout := VBoxContainer.new()
@@ -213,21 +184,21 @@ func _build_ui() -> void:
 	controls_layout.add_theme_constant_override("separation", 12)
 	controls_margin.add_child(controls_layout)
 
-	controls_layout.add_child(_build_section_title(JOYSTICK_SECTION_TEXT))
-	controls_layout.add_child(_create_slider_row("joystick", "margin_left", LEFT_MARGIN_TEXT, 8.0, 280.0, 1.0))
-	controls_layout.add_child(_create_slider_row("joystick", "margin_bottom", BOTTOM_MARGIN_TEXT, 8.0, 180.0, 1.0))
-	controls_layout.add_child(_create_slider_row("joystick", "size", SIZE_TEXT, 112.0, 240.0, 1.0))
+	controls_layout.add_child(_build_section_title(UITextsScript.INPUT_SETTINGS_JOYSTICK_SECTION))
+	controls_layout.add_child(_create_slider_row("joystick", "margin_left", UITextsScript.INPUT_SETTINGS_LEFT_MARGIN, 8.0, 280.0, 1.0))
+	controls_layout.add_child(_create_slider_row("joystick", "margin_bottom", UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN, 8.0, 180.0, 1.0))
+	controls_layout.add_child(_create_slider_row("joystick", "size", UITextsScript.INPUT_SETTINGS_SIZE, 112.0, 240.0, 1.0))
 
-	controls_layout.add_child(_build_section_title(AIM_BUTTON_SECTION_TEXT))
-	controls_layout.add_child(_create_slider_row("aim_button", "margin_right", RIGHT_MARGIN_TEXT, 8.0, 280.0, 1.0))
-	controls_layout.add_child(_create_slider_row("aim_button", "margin_bottom", BOTTOM_MARGIN_TEXT, 8.0, 180.0, 1.0))
-	controls_layout.add_child(_create_slider_row("aim_button", "size", SIZE_TEXT, 88.0, 220.0, 1.0))
+	controls_layout.add_child(_build_section_title(UITextsScript.INPUT_SETTINGS_AIM_BUTTON_SECTION))
+	controls_layout.add_child(_create_slider_row("aim_button", "margin_right", UITextsScript.INPUT_SETTINGS_RIGHT_MARGIN, 8.0, 280.0, 1.0))
+	controls_layout.add_child(_create_slider_row("aim_button", "margin_bottom", UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN, 8.0, 180.0, 1.0))
+	controls_layout.add_child(_create_slider_row("aim_button", "size", UITextsScript.INPUT_SETTINGS_SIZE, 88.0, 220.0, 1.0))
 
 	var hint_label := Label.new()
-	hint_label.text = HINT_TEXT
+	hint_label.text = UITextsScript.INPUT_SETTINGS_HINT
 	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint_label.modulate = Color(0.76, 0.84, 0.9, 0.72)
-	_apply_font(hint_label, 12)
+	_apply_dialog_font(hint_label, 12)
 	controls_layout.add_child(hint_label)
 
 	var footer_row := HBoxContainer.new()
@@ -239,17 +210,17 @@ func _build_ui() -> void:
 	footer_row.add_child(footer_spacer)
 
 	var reset_button := Button.new()
-	reset_button.text = RESET_TEXT
+	reset_button.text = UITextsScript.RESET_DEFAULT
 	reset_button.custom_minimum_size = Vector2(108.0, 38.0)
 	reset_button.pressed.connect(_on_reset_button_pressed)
-	_apply_font(reset_button, 14)
+	_apply_dialog_font(reset_button, 14)
 	footer_row.add_child(reset_button)
 
 	var done_button := Button.new()
-	done_button.text = DONE_TEXT
+	done_button.text = UITextsScript.DONE
 	done_button.custom_minimum_size = Vector2(92.0, 38.0)
 	done_button.pressed.connect(close_dialog)
-	_apply_font(done_button, 14)
+	_apply_dialog_font(done_button, 14)
 	footer_row.add_child(done_button)
 
 	_update_dialog_geometry()
@@ -304,10 +275,10 @@ func _build_preview_scene(root: Control) -> void:
 	player_marker.offset_bottom = 10.0
 	player_marker.add_theme_stylebox_override(
 		"panel",
-		_make_panel_style(
-		Color(0.36, 0.87, 1.0, 1.0),
-		Color(0.82, 0.97, 1.0, 0.92),
-		10
+		UIThemeHelperScript.build_panel_style(
+			Color(0.36, 0.87, 1.0, 1.0),
+			10,
+			Color(0.82, 0.97, 1.0, 0.92)
 		)
 	)
 	root.add_child(player_marker)
@@ -351,10 +322,10 @@ func _build_preview_crosshair(root: Control) -> void:
 	center_dot.offset_bottom = 16.0
 	center_dot.add_theme_stylebox_override(
 		"panel",
-		_make_panel_style(
-		Color(0.86, 0.97, 1.0, 0.94),
-		Color(0.86, 0.97, 1.0, 0.94),
-		4
+		UIThemeHelperScript.build_panel_style(
+			Color(0.86, 0.97, 1.0, 0.94),
+			4,
+			Color(0.86, 0.97, 1.0, 0.94)
 		)
 	)
 	crosshair_root.add_child(center_dot)
@@ -383,7 +354,7 @@ func _create_slider_row(
 
 	var label := Label.new()
 	label.text = label_text
-	_apply_font(label, 13)
+	_apply_dialog_font(label, 13)
 	row.add_child(label)
 
 	var controls_row := HBoxContainer.new()
@@ -401,7 +372,7 @@ func _create_slider_row(
 	var value_label := Label.new()
 	value_label.custom_minimum_size = Vector2(48.0, 0.0)
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_apply_font(value_label, 12)
+	_apply_dialog_font(value_label, 12)
 	controls_row.add_child(value_label)
 
 	var slider_id := "%s.%s" % [section_name, key_name]
@@ -414,7 +385,7 @@ func _build_section_title(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.modulate = Color(0.89, 0.96, 1.0, 1.0)
-	_apply_font(label, 16)
+	_apply_dialog_font(label, 16)
 	return label
 
 
@@ -481,21 +452,5 @@ func _update_dialog_geometry() -> void:
 	_update_preview_layout()
 
 
-func _make_panel_style(fill_color: Color, border_color: Color, corner_radius: int) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill_color
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.border_color = border_color
-	style.corner_radius_top_left = corner_radius
-	style.corner_radius_top_right = corner_radius
-	style.corner_radius_bottom_right = corner_radius
-	style.corner_radius_bottom_left = corner_radius
-	return style
-
-
-func _apply_font(control: Control, font_size: int) -> void:
-	control.add_theme_font_override("font", UIFont)
-	control.add_theme_font_size_override("font_size", font_size)
+func _apply_dialog_font(control: Control, font_size: int) -> void:
+	UIThemeHelperScript.apply_font(control, UIFont, font_size)
