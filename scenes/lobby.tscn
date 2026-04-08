@@ -52,10 +52,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 18
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
 
 [node name="MainLayout" type="VBoxContainer" parent="SafeArea"]
 layout_mode = 2
@@ -68,55 +68,75 @@ theme_override_styles/panel = SubResource("1")
 [node name="TopMargin" type="MarginContainer" parent="SafeArea/MainLayout/TopPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 14
+theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_bottom = 12
 
 [node name="TopBar" type="HBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 20
+theme_override_constants/separation = 18
 
-[node name="PlayerColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(180, 0)
+[node name="PlayerSection" type="CenterContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="PlayerColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+alignment = 1
 theme_override_constants/separation = 4
 
-[node name="PlayerTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerColumn"]
+[node name="PlayerTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn"]
 layout_mode = 2
 text = "玩家名字"
+horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 12
 
-[node name="PlayerValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerColumn"]
+[node name="PlayerValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn"]
 layout_mode = 2
 text = "测试玩家"
+horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
-[node name="GoldColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(160, 0)
+[node name="DividerLeft" type="VSeparator" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
+layout_mode = 2
+
+[node name="GoldSection" type="CenterContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="GoldColumn" type="VBoxContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+alignment = 1
 theme_override_constants/separation = 4
 
-[node name="GoldTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldColumn"]
+[node name="GoldTitleLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn"]
 layout_mode = 2
 text = "金币"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 12
 
-[node name="GoldValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldColumn"]
+[node name="GoldValueLabel" type="Label" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn"]
 layout_mode = 2
 text = "0"
 horizontal_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
-[node name="SettingsButton" type="Button" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
-custom_minimum_size = Vector2(104, 44)
+[node name="DividerRight" type="VSeparator" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
+layout_mode = 2
+
+[node name="SettingsSection" type="CenterContainer" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SettingsButton" type="Button" parent="SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsSection"]
+custom_minimum_size = Vector2(108, 44)
 layout_mode = 2
 text = "设置"
 theme_override_fonts/font = ExtResource("2")
@@ -131,7 +151,7 @@ size_flags_vertical = 3
 layout_mode = 2
 
 [node name="TaskToggleButton" type="Button" parent="SafeArea/MainLayout/BottomBar"]
-custom_minimum_size = Vector2(152, 44)
+custom_minimum_size = Vector2(170, 44)
 layout_mode = 2
 text = "任务列表"
 theme_override_fonts/font = ExtResource("2")
@@ -142,10 +162,10 @@ visible = false
 layout_mode = 1
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -304.0
-offset_right = 388.0
-offset_bottom = -76.0
+offset_left = 18.0
+offset_top = -332.0
+offset_right = 470.0
+offset_bottom = -70.0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("1")
 
@@ -179,14 +199,14 @@ theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
 [node name="TaskScroll" type="ScrollContainer" parent="TaskPanel/TaskMargin/TaskContent"]
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 178)
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="TaskItems" type="VBoxContainer" parent="TaskPanel/TaskMargin/TaskContent/TaskScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="SettingsOverlay" type="Control" parent="."]
 visible = false

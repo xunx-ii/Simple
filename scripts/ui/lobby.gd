@@ -1,16 +1,17 @@
 extends Control
 
 const TaskSystemScript = preload("res://scripts/systems/task_system.gd")
+const TaskPanelRendererScript = preload("res://scripts/ui/task_panel_renderer.gd")
 
 var task_system
 
-@onready var player_name_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerColumn/PlayerValueLabel
-@onready var gold_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldColumn/GoldValueLabel
+@onready var player_name_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn/PlayerValueLabel
+@onready var gold_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldValueLabel
 @onready var task_toggle_button: Button = $SafeArea/MainLayout/BottomBar/TaskToggleButton
 @onready var task_panel: PanelContainer = $TaskPanel
 @onready var task_items_container: VBoxContainer = $TaskPanel/TaskMargin/TaskContent/TaskScroll/TaskItems
 @onready var task_close_button: Button = $TaskPanel/TaskMargin/TaskContent/TaskHeader/TaskCloseButton
-@onready var settings_button: Button = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsButton
+@onready var settings_button: Button = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsSection/SettingsButton
 @onready var settings_overlay: Control = $SettingsOverlay
 @onready var settings_close_button: Button = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/SettingsCloseButton
 
@@ -27,19 +28,21 @@ func _ready() -> void:
 
 	settings_overlay.visible = false
 	task_panel.visible = false
-	_apply_task_state(task_system.get_player_name(), task_system.get_gold(), task_system.get_tasks())
+	_apply_task_state(task_system.get_player_name(), task_system.get_gold(), task_system.get_task_chains())
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		if settings_overlay.visible:
-			settings_overlay.visible = false
-			get_viewport().set_input_as_handled()
-			return
+	if not event.is_action_pressed("ui_cancel"):
+		return
 
-		if task_panel.visible:
-			_close_task_panel()
-			get_viewport().set_input_as_handled()
+	if settings_overlay.visible:
+		settings_overlay.visible = false
+		get_viewport().set_input_as_handled()
+		return
+
+	if task_panel.visible:
+		_close_task_panel()
+		get_viewport().set_input_as_handled()
 
 
 func _on_settings_button_pressed() -> void:
@@ -52,94 +55,63 @@ func _on_settings_close_button_pressed() -> void:
 
 func _on_task_toggle_button_pressed() -> void:
 	task_panel.visible = not task_panel.visible
-	_refresh_task_button_text()
+	_refresh_task_button_text(task_system.get_task_chains())
 
 
 func _close_task_panel() -> void:
 	task_panel.visible = false
-	_refresh_task_button_text()
+	_refresh_task_button_text(task_system.get_task_chains())
 
 
-func _on_tasks_updated(tasks: Array, total_gold: int) -> void:
-	_apply_task_state(task_system.get_player_name(), total_gold, tasks)
+func _on_tasks_updated(task_chains: Array, total_gold: int) -> void:
+	_apply_task_state(task_system.get_player_name(), total_gold, task_chains)
 
 
-func _apply_task_state(player_name: String, total_gold: int, tasks: Array) -> void:
+func _apply_task_state(player_name: String, total_gold: int, task_chains: Array) -> void:
 	player_name_label.text = player_name
 	gold_label.text = str(total_gold)
-	_rebuild_task_list(tasks)
-	_refresh_task_button_text()
+	TaskPanelRendererScript.populate(
+		task_items_container,
+		task_chains,
+		_get_ui_font(),
+		Callable(self, "_on_task_action_pressed")
+	)
+	_refresh_task_button_text(task_chains)
 
 
-func _rebuild_task_list(tasks: Array) -> void:
-	for child in task_items_container.get_children():
-		task_items_container.remove_child(child)
-		child.queue_free()
+func _on_task_action_pressed(task_id: String) -> void:
+	task_system.perform_task_action(task_id)
 
-	for task_variant in tasks:
-		if not (task_variant is Dictionary):
+
+func _get_ui_font() -> Font:
+	return player_name_label.get_theme_font("font")
+
+
+func _refresh_task_button_text(task_chains: Array) -> void:
+	var pending_count := 0
+	var ready_count := 0
+
+	for chain_variant in task_chains:
+		if not (chain_variant is Dictionary):
 			continue
 
-		var task: Dictionary = task_variant
-		var row := PanelContainer.new()
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		task_items_container.add_child(row)
+		for task_variant in chain_variant.get("tasks", []):
+			if not (task_variant is Dictionary):
+				continue
 
-		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 14)
-		margin.add_theme_constant_override("margin_top", 12)
-		margin.add_theme_constant_override("margin_right", 14)
-		margin.add_theme_constant_override("margin_bottom", 12)
-		row.add_child(margin)
+			var status := str(task_variant.get("status", ""))
+			if status == "ready_to_complete":
+				ready_count += 1
+			if status != "locked" and status != "completed":
+				pending_count += 1
 
-		var content := VBoxContainer.new()
-		content.add_theme_constant_override("separation", 10)
-		margin.add_child(content)
+	var base_label := "收起任务" if task_panel.visible else "任务列表"
+	if ready_count > 0:
+		task_toggle_button.text = "%s (%d 可提交)" % [base_label, ready_count]
+		return
 
-		var title := Label.new()
-		title.text = "%s  [%s]" % [
-			str(task.get("title", "任务")),
-			"已完成" if bool(task.get("completed", false)) else "进行中"
-		]
-		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_apply_text_style(title, 15)
-		content.add_child(title)
+	if pending_count > 0:
+		task_toggle_button.text = "%s (%d)" % [base_label, pending_count]
+		return
 
-		var description := Label.new()
-		description.text = str(task.get("description", ""))
-		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_apply_text_style(description, 13)
-		content.add_child(description)
-
-		var footer := HBoxContainer.new()
-		footer.add_theme_constant_override("separation", 10)
-		content.add_child(footer)
-
-		var reward := Label.new()
-		reward.text = "奖励金币：%d" % int(task.get("reward", 0))
-		reward.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_apply_text_style(reward, 13)
-		footer.add_child(reward)
-
-		var action_button := Button.new()
-		action_button.custom_minimum_size = Vector2(96, 34)
-		action_button.text = "已领取" if bool(task.get("completed", false)) else "完成任务"
-		action_button.disabled = bool(task.get("completed", false))
-		action_button.pressed.connect(_on_complete_task_button_pressed.bind(str(task.get("id", ""))))
-		_apply_text_style(action_button, 13)
-		footer.add_child(action_button)
-
-
-func _on_complete_task_button_pressed(task_id: String) -> void:
-	task_system.complete_task(task_id)
-
-
-func _apply_text_style(control: Control, font_size: int) -> void:
-	var ui_font: Font = player_name_label.get_theme_font("font")
-	if ui_font != null:
-		control.add_theme_font_override("font", ui_font)
-	control.add_theme_font_size_override("font_size", font_size)
-
-
-func _refresh_task_button_text() -> void:
-	task_toggle_button.text = "收起任务" if task_panel.visible else "任务列表"
+	task_toggle_button.text = base_label
