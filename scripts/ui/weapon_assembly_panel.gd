@@ -23,7 +23,7 @@ var schematic_root: Control
 var weapon_frame: PanelContainer
 var weapon_name_label: Label
 var weapon_description_label: Label
-var stat_overlay: PanelContainer
+var stat_overlay: VBoxContainer
 var stat_items: VBoxContainer
 var attachment_overlay: PanelContainer
 var attachment_title_label: Label
@@ -126,21 +126,11 @@ func _build_ui() -> void:
 	_apply_font(weapon_description_label, 11)
 	weapon_layout.add_child(weapon_description_label)
 
-	stat_overlay = PanelContainer.new()
+	stat_overlay = VBoxContainer.new()
 	stat_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stat_overlay.add_theme_stylebox_override(
-		"panel",
-		UIThemeHelperScript.build_panel_style(Color(0.02, 0.03, 0.05, 0.44), 10, Color(0.27, 0.36, 0.44, 0.34))
-	)
+	stat_overlay.add_theme_constant_override("separation", 3)
 	schematic_root.add_child(stat_overlay)
-
-	var stat_margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(stat_margin, 10, 8, 10, 8)
-	stat_overlay.add_child(stat_margin)
-
-	stat_items = VBoxContainer.new()
-	stat_items.add_theme_constant_override("separation", 3)
-	stat_margin.add_child(stat_items)
+	stat_items = stat_overlay
 
 	attachment_overlay = PanelContainer.new()
 	attachment_overlay.visible = false
@@ -257,9 +247,10 @@ func _refresh_stats() -> void:
 			continue
 
 		var label := Label.new()
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		label.modulate = Color(0.88, 0.93, 0.99, 0.72)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.modulate = Color(0.88, 0.93, 0.99, 0.78)
 		label.text = _format_stat_text(stat_variant)
+		label.custom_minimum_size = Vector2(150.0, 0.0)
 		_apply_font(label, 10)
 		stat_items.add_child(label)
 
@@ -464,11 +455,8 @@ func _update_schematic_layout() -> void:
 		root_size
 	)
 
-	var stat_size := Vector2(
-		clampf(root_size.x * 0.34, 170.0, 244.0),
-		clampf(root_size.y * 0.34, 88.0, 126.0)
-	)
-	stat_overlay.position = Vector2(root_size.x - stat_size.x - 12.0, root_size.y - stat_size.y - 10.0)
+	var stat_size := stat_overlay.get_combined_minimum_size()
+	stat_overlay.position = Vector2(12.0, root_size.y - stat_size.y - 10.0)
 	stat_overlay.size = stat_size
 
 	var overlay_size := Vector2(
