@@ -56,7 +56,7 @@ const ATTACHMENT_LIBRARY := {
 		"id": "red_dot",
 		"display_name": "红点瞄具",
 		"slot_id": "optic",
-		"description": "轻量化近距离瞄具，提高稳定性与操控。",
+		"description": "轻量化近距离瞄具，提高稳定性与操控性。",
 		"sell_value": 90,
 		"modifiers": {
 			"stability": 1,
@@ -89,7 +89,7 @@ const ATTACHMENT_LIBRARY := {
 		"id": "suppressor",
 		"display_name": "消音器",
 		"slot_id": "muzzle",
-		"description": "降低枪声暴露，提高射程，但稍微拖累操控。",
+		"description": "降低枪声暴露，提高射程，但会稍微拖累操控。",
 		"sell_value": 120,
 		"modifiers": {
 			"range": 1,
@@ -100,7 +100,7 @@ const ATTACHMENT_LIBRARY := {
 		"id": "extended_mag",
 		"display_name": "扩容弹匣",
 		"slot_id": "magazine",
-		"description": "延长持续火力，牺牲一部分枪械灵活性。",
+		"description": "延长持续火力，牺牲部分枪械灵活性。",
 		"sell_value": 130,
 		"modifiers": {
 			"range": 1,
@@ -122,7 +122,7 @@ const ATTACHMENT_LIBRARY := {
 		"id": "light_stock",
 		"display_name": "轻型枪托",
 		"slot_id": "stock",
-		"description": "压缩重量，提升转向和抬枪速度。",
+		"description": "压缩重量，提升转向与抬枪速度。",
 		"sell_value": 100,
 		"modifiers": {
 			"handling": 1,
@@ -133,7 +133,7 @@ const ATTACHMENT_LIBRARY := {
 		"id": "precision_stock",
 		"display_name": "稳定枪托",
 		"slot_id": "stock",
-		"description": "强化肩托支撑，提升稳定性与中远距离控制。",
+		"description": "强化肩托支撑，提高稳定性与中远距离控制。",
 		"sell_value": 118,
 		"modifiers": {
 			"recoil": -1,
@@ -185,9 +185,9 @@ static func build_snapshot(warehouse_snapshot: Dictionary, equipped_variant: Var
 					else "点击装配"
 				),
 				"description": (
-					str(equipped_attachment.get("description", "从仓库选择适配配件。"))
+					str(equipped_attachment.get("description", "从仓库中选择适配当前部位的配件。"))
 					if not equipped_id.is_empty()
-					else "从仓库选择适配配件。"
+					else "从仓库中选择适配当前部位的配件。"
 				)
 			}
 		)
@@ -201,7 +201,11 @@ static func build_snapshot(warehouse_snapshot: Dictionary, equipped_variant: Var
 	}
 
 
-static func build_available_attachment_entries(slot_id: String, warehouse_snapshot: Dictionary, equipped_variant: Variant) -> Array[Dictionary]:
+static func build_available_attachment_entries(
+	slot_id: String,
+	warehouse_snapshot: Dictionary,
+	equipped_variant: Variant
+) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
 	var equipped := sanitize_equipped_attachments(equipped_variant)
 	var current_attachment_id := str(equipped.get(slot_id, ""))
@@ -212,7 +216,7 @@ static func build_available_attachment_entries(slot_id: String, warehouse_snapsh
 				"id": "__unequip__",
 				"display_name": "卸下当前配件",
 				"meta_text": str(current_attachment.get("display_name", "")),
-				"description": "将已装配的部件退回仓库。",
+				"description": "将当前已装备的配件退回仓库。",
 				"action_text": "卸下",
 				"action_enabled": true
 			}
@@ -301,6 +305,26 @@ static func build_modifier_summary(attachment_id: String) -> String:
 	return " / ".join(parts) if not parts.is_empty() else "无属性调整"
 
 
+static func build_stat_display_lines(stats_variant: Variant) -> Array[String]:
+	var lines: Array[String] = []
+	if not (stats_variant is Array):
+		return lines
+
+	for stat_variant in stats_variant:
+		if stat_variant is Dictionary:
+			lines.append(format_stat_entry(stat_variant))
+
+	return lines
+
+
+static func format_stat_entry(stat: Dictionary) -> String:
+	var stat_name := str(stat.get("label", "Stat"))
+	var base_value := int(stat.get("base", 0))
+	var modifier := int(stat.get("modifier", 0))
+	var current_value := int(stat.get("current", base_value + modifier))
+	return "%s: %d(%s) %d" % [stat_name, base_value, _signed_modifier(modifier), current_value]
+
+
 static func _build_stat_entries(equipped: Dictionary) -> Array[Dictionary]:
 	var total_modifiers: Dictionary = {}
 	for slot_id in SLOT_ORDER:
@@ -327,18 +351,21 @@ static func _build_stat_entries(equipped: Dictionary) -> Array[Dictionary]:
 				"base": base_value,
 				"modifier": modifier,
 				"current": base_value + modifier,
-				"display_text": "%s：%d (%s%d)  当前 %d"
+				"display_text": "%s: %d(%s) %d"
 					% [
 						stat.get("label", stat_id),
 						base_value,
-						"+" if modifier >= 0 else "",
-						modifier,
+						_signed_modifier(modifier),
 						base_value + modifier
 					]
 			}
 		)
 
 	return stat_entries
+
+
+static func _signed_modifier(value: int) -> String:
+	return "+%d" % value if value >= 0 else str(value)
 
 
 static func _count_warehouse_attachments(warehouse_snapshot: Dictionary) -> int:

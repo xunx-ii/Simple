@@ -4,6 +4,8 @@ extends PanelContainer
 signal assembly_changed(status_text: String)
 
 const MetaProgressionStateScript = preload("res://scripts/systems/meta_progression_state.gd")
+const WeaponAssemblyStateScript = preload("res://scripts/systems/weapon_assembly_state.gd")
+const WeaponAssemblyUIHelperScript = preload("res://scripts/ui/weapon_assembly_ui_helper.gd")
 const UIThemeHelperScript = preload("res://scripts/ui/ui_theme_helper.gd")
 const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
 const UIFont = preload("res://assets/fonts/vonwaon.ttf")
@@ -11,6 +13,8 @@ const UIFont = preload("res://assets/fonts/vonwaon.ttf")
 const SLOT_BUTTON_SIZE := Vector2(118.0, 42.0)
 const LINE_COLOR := Color(0.8, 0.22, 0.22, 0.9)
 const FRAME_BORDER_COLOR := Color(0.88, 0.28, 0.28, 0.94)
+const INACTIVE_SLOT_BORDER_COLOR := Color(0.6, 0.2, 0.2, 0.72)
+const ATTACHMENT_OVERLAY_BORDER_COLOR := Color(0.25, 0.37, 0.47, 1.0)
 
 var selected_slot_id := ""
 var overlay_open := false
@@ -24,7 +28,6 @@ var weapon_frame: PanelContainer
 var weapon_name_label: Label
 var weapon_description_label: Label
 var stat_overlay: VBoxContainer
-var stat_items: VBoxContainer
 var attachment_overlay: PanelContainer
 var attachment_title_label: Label
 var attachment_scroll: ScrollContainer
@@ -59,6 +62,30 @@ func refresh_panel() -> void:
 	_refresh_panel()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if overlay_open and event.is_action_pressed("ui_cancel"):
+		_close_attachment_overlay()
+		get_viewport().set_input_as_handled()
+
+
+func _gui_input(event: InputEvent) -> void:
+	if not overlay_open:
+		return
+	if not (event is InputEventMouseButton):
+		return
+
+	var mouse_event: InputEventMouseButton = event
+	if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+		return
+
+	var global_position := mouse_event.global_position
+	if _pointer_hits_slot_button(global_position) or _pointer_hits_attachment_overlay(global_position):
+		return
+
+	_close_attachment_overlay()
+	accept_event()
+
+
 func _build_ui() -> void:
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -72,10 +99,24 @@ func _build_ui() -> void:
 	root_layout.add_theme_constant_override("separation", 8)
 	margin.add_child(root_layout)
 
+	root_layout.add_child(_build_header_row())
+
+	schematic_root = Control.new()
+	schematic_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	schematic_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	root_layout.add_child(schematic_root)
+	schematic_root.resized.connect(_on_layout_changed)
+
+	_build_weapon_frame()
+	_build_stat_overlay()
+	_build_attachment_overlay()
+	_build_slot_buttons()
+
+
+func _build_header_row() -> HBoxContainer:
 	var header_row := HBoxContainer.new()
 	header_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_row.add_theme_constant_override("separation", 12)
-	root_layout.add_child(header_row)
 
 	header_label = Label.new()
 	header_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -88,13 +129,10 @@ func _build_ui() -> void:
 	header_meta_label.modulate = Color(0.84, 0.9, 0.96, 0.9)
 	_apply_font(header_meta_label, 11)
 	header_row.add_child(header_meta_label)
+	return header_row
 
-	schematic_root = Control.new()
-	schematic_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	schematic_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root_layout.add_child(schematic_root)
-	schematic_root.resized.connect(_on_layout_changed)
 
+func _build_weapon_frame() -> void:
 	weapon_frame = PanelContainer.new()
 	weapon_frame.add_theme_stylebox_override(
 		"panel",
@@ -126,18 +164,21 @@ func _build_ui() -> void:
 	_apply_font(weapon_description_label, 11)
 	weapon_layout.add_child(weapon_description_label)
 
+
+func _build_stat_overlay() -> void:
 	stat_overlay = VBoxContainer.new()
 	stat_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stat_overlay.add_theme_constant_override("separation", 3)
 	schematic_root.add_child(stat_overlay)
-	stat_items = stat_overlay
 
+
+func _build_attachment_overlay() -> void:
 	attachment_overlay = PanelContainer.new()
 	attachment_overlay.visible = false
 	attachment_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	attachment_overlay.add_theme_stylebox_override(
 		"panel",
-		UIThemeHelperScript.build_panel_style(Color(0.05, 0.06, 0.085, 0.98), 14, Color(0.25, 0.37, 0.47, 1.0))
+		UIThemeHelperScript.build_panel_style(Color(0.05, 0.06, 0.085, 0.98), 14, ATTACHMENT_OVERLAY_BORDER_COLOR)
 	)
 	schematic_root.add_child(attachment_overlay)
 
@@ -167,15 +208,15 @@ func _build_ui() -> void:
 	attachment_items.add_theme_constant_override("separation", 6)
 	attachment_scroll.add_child(attachment_items)
 
+
+func _build_slot_buttons() -> void:
 	for slot_id in ["optic", "muzzle", "magazine", "stock"]:
-		var button := Button.new()
-		button.custom_minimum_size = SLOT_BUTTON_SIZE
-		button.focus_mode = Control.FOCUS_NONE
-		button.flat = true
-		button.clip_text = false
-		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		button.pressed.connect(_on_slot_button_pressed.bind(slot_id))
-		_apply_font(button, 13)
+		var button := WeaponAssemblyUIHelperScript.create_slot_button(
+			SLOT_BUTTON_SIZE,
+			UIFont,
+			13,
+			_on_slot_button_pressed.bind(slot_id)
+		)
 		schematic_root.add_child(button)
 		slot_buttons[slot_id] = button
 
@@ -188,6 +229,7 @@ func _refresh_panel() -> void:
 
 	if selected_slot_id.is_empty() or not _slot_exists(selected_slot_id, slots):
 		selected_slot_id = str(slots[0].get("id", ""))
+		overlay_open = false
 
 	weapon_name_label.text = str(current_snapshot.get("weapon_name", "Weapon"))
 	weapon_description_label.text = str(current_snapshot.get("weapon_description", ""))
@@ -226,48 +268,21 @@ func _refresh_slot_buttons(slots: Array) -> void:
 			str(slot.get("equipped_name", "点击装配"))
 		]
 		button.tooltip_text = str(slot.get("description", ""))
-
-		var active := overlay_open and slot_id == selected_slot_id
-		var border_color := FRAME_BORDER_COLOR if active else Color(0.6, 0.2, 0.2, 0.72)
-		var fill_color := Color(0.09, 0.1, 0.13, 0.98) if active else Color(0.06, 0.07, 0.1, 0.94)
-		var style := UIThemeHelperScript.build_panel_style(fill_color, 7, border_color)
-		button.add_theme_stylebox_override("normal", style)
-		button.add_theme_stylebox_override("hover", style)
-		button.add_theme_stylebox_override("pressed", style)
-		button.modulate = Color(1.0, 0.98, 0.98, 1.0) if active else Color(0.94, 0.94, 0.94, 1.0)
+		WeaponAssemblyUIHelperScript.apply_slot_button_style(
+			button,
+			overlay_open and slot_id == selected_slot_id,
+			FRAME_BORDER_COLOR,
+			INACTIVE_SLOT_BORDER_COLOR
+		)
 
 
 func _refresh_stats() -> void:
-	for child in stat_items.get_children():
-		stat_items.remove_child(child)
-		child.queue_free()
+	WeaponAssemblyUIHelperScript.clear_children(stat_overlay)
 
-	for stat_variant in current_snapshot.get("stats", []):
-		if not (stat_variant is Dictionary):
-			continue
+	for stat_text in WeaponAssemblyStateScript.build_stat_display_lines(current_snapshot.get("stats", [])):
+		stat_overlay.add_child(WeaponAssemblyUIHelperScript.create_stat_label(stat_text, UIFont, 10))
 
-		var label := Label.new()
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		label.modulate = Color(0.88, 0.93, 0.99, 0.78)
-		label.text = _format_stat_text(stat_variant)
-		label.custom_minimum_size = Vector2(150.0, 0.0)
-		_apply_font(label, 10)
-		stat_items.add_child(label)
-
-	stat_overlay.visible = stat_items.get_child_count() > 0
-
-
-func _format_stat_text(stat_variant: Dictionary) -> String:
-	var stat: Dictionary = stat_variant
-	var stat_name := str(stat.get("label", "属性"))
-	var base_value := int(stat.get("base", 0))
-	var modifier := int(stat.get("modifier", 0))
-	var current_value := int(stat.get("current", base_value + modifier))
-	return "%s: %d(%s) %d" % [stat_name, base_value, _signed_number(modifier), current_value]
-
-
-func _signed_number(value: int) -> String:
-	return "+%d" % value if value >= 0 else str(value)
+	stat_overlay.visible = stat_overlay.get_child_count() > 0
 
 
 func _refresh_attachment_overlay() -> void:
@@ -275,9 +290,7 @@ func _refresh_attachment_overlay() -> void:
 	if not overlay_open:
 		return
 
-	for child in attachment_items.get_children():
-		attachment_items.remove_child(child)
-		child.queue_free()
+	WeaponAssemblyUIHelperScript.clear_children(attachment_items)
 
 	var slot_definition := _get_selected_slot_definition()
 	attachment_title_label.text = "%s / %s" % [
@@ -287,82 +300,35 @@ func _refresh_attachment_overlay() -> void:
 
 	var entries := MetaProgressionStateScript.get_weapon_attachment_entries(selected_slot_id)
 	if entries.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = UITextsScript.WEAPON_ATTACHMENT_EMPTY
-		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_apply_font(empty_label, 11)
-		attachment_items.add_child(empty_label)
+		attachment_items.add_child(
+			WeaponAssemblyUIHelperScript.create_empty_label(
+				UITextsScript.WEAPON_ATTACHMENT_EMPTY,
+				UIFont,
+				11
+			)
+		)
 		return
 
 	for entry_variant in entries:
 		if not (entry_variant is Dictionary):
 			continue
 
-		attachment_items.add_child(_build_attachment_entry(entry_variant))
-
-
-func _build_attachment_entry(entry: Dictionary) -> Control:
-	var card := PanelContainer.new()
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override(
-		"panel",
-		UIThemeHelperScript.build_panel_style(Color(0.094, 0.11, 0.145, 0.96), 10, Color(0.22, 0.31, 0.39, 1.0))
-	)
-
-	var margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(margin, 8, 8, 8, 8)
-	card.add_child(margin)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	margin.add_child(row)
-
-	var text_column := VBoxContainer.new()
-	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_column.add_theme_constant_override("separation", 3)
-	row.add_child(text_column)
-
-	var name_label := Label.new()
-	name_label.text = str(entry.get("display_name", "配件"))
-	_apply_font(name_label, 13)
-	text_column.add_child(name_label)
-
-	var meta_text := str(entry.get("meta_text", ""))
-	if not meta_text.is_empty():
-		var meta_label := Label.new()
-		meta_label.text = meta_text
-		meta_label.modulate = Color(0.73, 0.84, 0.94, 0.92)
-		_apply_font(meta_label, 10)
-		text_column.add_child(meta_label)
-
-	var description_text := str(entry.get("description", ""))
-	if not description_text.is_empty():
-		var description_label := Label.new()
-		description_label.text = description_text
-		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		description_label.max_lines_visible = 2
-		_apply_font(description_label, 10)
-		text_column.add_child(description_label)
-
-	var action_button := Button.new()
-	action_button.text = str(entry.get("action_text", "装配"))
-	action_button.custom_minimum_size = Vector2(82.0, 38.0)
-	action_button.disabled = not bool(entry.get("action_enabled", false))
-	action_button.focus_mode = Control.FOCUS_NONE
-	action_button.pressed.connect(_on_attachment_action_pressed.bind(str(entry.get("id", ""))))
-	_apply_font(action_button, 12)
-	row.add_child(action_button)
-
-	return card
+		attachment_items.add_child(
+			WeaponAssemblyUIHelperScript.create_attachment_entry(
+				entry_variant,
+				UIFont,
+				_on_attachment_action_pressed
+			)
+		)
 
 
 func _on_slot_button_pressed(slot_id: String) -> void:
 	if overlay_open and selected_slot_id == slot_id:
-		overlay_open = false
-	else:
-		selected_slot_id = slot_id
-		overlay_open = true
+		_close_attachment_overlay()
+		return
 
+	selected_slot_id = slot_id
+	overlay_open = true
 	_update_header_meta()
 	_refresh_slot_buttons(current_snapshot.get("slots", []))
 	_refresh_attachment_overlay()
@@ -385,6 +351,30 @@ func _on_attachment_action_pressed(attachment_id: String) -> void:
 	overlay_open = false
 	_refresh_panel()
 	assembly_changed.emit(status_text)
+
+
+func _close_attachment_overlay() -> void:
+	if not overlay_open:
+		return
+
+	overlay_open = false
+	_update_header_meta()
+	_refresh_slot_buttons(current_snapshot.get("slots", []))
+	_refresh_attachment_overlay()
+	queue_redraw()
+
+
+func _pointer_hits_slot_button(global_position: Vector2) -> bool:
+	for slot_button in slot_buttons.values():
+		var button: Button = slot_button
+		if button != null and button.get_global_rect().has_point(global_position):
+			return true
+
+	return false
+
+
+func _pointer_hits_attachment_overlay(global_position: Vector2) -> bool:
+	return attachment_overlay != null and attachment_overlay.visible and attachment_overlay.get_global_rect().has_point(global_position)
 
 
 func _get_selected_slot_definition() -> Dictionary:
