@@ -1,14 +1,11 @@
 class_name VirtualJoystick
 extends Control
 
+const MobileControlStyleScript = preload("res://scripts/ui/mobile_control_style.gd")
+
 signal move_vector_changed(move_vector: Vector2)
 
-const BASE_RADIUS := 54.0
-const KNOB_RADIUS := 24.0
 const DEADZONE_RATIO := 0.16
-const BASE_COLOR := Color(0.06, 0.08, 0.11, 0.58)
-const KNOB_COLOR := Color(0.36, 0.87, 1.0, 0.88)
-const RING_COLOR := Color(0.62, 0.82, 0.95, 0.26)
 
 var touch_index: int = -1
 var is_mouse_dragging: bool = false
@@ -19,6 +16,7 @@ var controls_enabled: bool = true
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	resized.connect(queue_redraw)
 	queue_redraw()
 
 
@@ -46,6 +44,9 @@ func set_controls_enabled(enabled: bool) -> void:
 	controls_enabled = enabled
 	if not enabled:
 		reset_input()
+		return
+
+	queue_redraw()
 
 
 func reset_input() -> void:
@@ -58,9 +59,15 @@ func reset_input() -> void:
 
 func _draw() -> void:
 	var center := size * 0.5
-	draw_circle(center, BASE_RADIUS, BASE_COLOR)
-	draw_arc(center, BASE_RADIUS, 0.0, TAU, 48, RING_COLOR, 3.0, true)
-	draw_circle(center + knob_offset, KNOB_RADIUS, KNOB_COLOR)
+	var base_radius := _get_base_radius()
+	MobileControlStyleScript.draw_shell(
+		self,
+		center,
+		base_radius,
+		touch_index >= 0 or is_mouse_dragging,
+		not controls_enabled
+	)
+	MobileControlStyleScript.draw_knob(self, center + knob_offset, _get_knob_radius(base_radius))
 
 
 func _handle_screen_touch(event: InputEventScreenTouch) -> void:
@@ -114,9 +121,10 @@ func _update_knob_from_screen_position(screen_position: Vector2) -> void:
 	var center := size * 0.5
 	var local_position := _get_local_input_position(screen_position)
 	var raw_offset := local_position - center
-	knob_offset = raw_offset.limit_length(BASE_RADIUS)
+	var base_radius := _get_base_radius()
+	knob_offset = raw_offset.limit_length(base_radius)
 
-	var normalized := Vector2.ZERO if BASE_RADIUS <= 0.0 else knob_offset / BASE_RADIUS
+	var normalized := Vector2.ZERO if base_radius <= 0.0 else knob_offset / base_radius
 	if normalized.length() < DEADZONE_RATIO:
 		normalized = Vector2.ZERO
 
@@ -129,3 +137,11 @@ func _get_local_input_position(event_position: Vector2) -> Vector2:
 		return event_position
 
 	return event_position - get_global_rect().position
+
+
+func _get_base_radius() -> float:
+	return maxf(minf(size.x, size.y) * 0.32, 18.0)
+
+
+func _get_knob_radius(base_radius: float) -> float:
+	return maxf(base_radius * 0.44, 10.0)

@@ -2,8 +2,10 @@ extends Control
 
 const TaskSystemScript = preload("res://scripts/systems/task_system.gd")
 const TaskPanelRendererScript = preload("res://scripts/ui/task_panel_renderer.gd")
+const InputSettingsDialogScript = preload("res://scripts/ui/input_settings_dialog.gd")
 
 var task_system
+var input_settings_dialog: Control
 
 @onready var player_name_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn/PlayerValueLabel
 @onready var gold_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldValueLabel
@@ -13,6 +15,7 @@ var task_system
 @onready var task_close_button: Button = $TaskPanel/TaskMargin/TaskContent/TaskHeader/TaskCloseButton
 @onready var settings_button: Button = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/SettingsSection/SettingsButton
 @onready var settings_overlay: Control = $SettingsOverlay
+@onready var input_settings_button: Button = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/InputSettingsButton
 @onready var settings_close_button: Button = $SettingsOverlay/SettingsDialog/SettingsMargin/SettingsContent/SettingsCloseButton
 
 
@@ -20,8 +23,11 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	task_system = TaskSystemScript.new()
 	task_system.tasks_updated.connect(_on_tasks_updated)
+	input_settings_dialog = InputSettingsDialogScript.new()
+	add_child(input_settings_dialog)
 
 	settings_button.pressed.connect(_on_settings_button_pressed)
+	input_settings_button.pressed.connect(_on_input_settings_button_pressed)
 	settings_close_button.pressed.connect(_on_settings_close_button_pressed)
 	task_toggle_button.pressed.connect(_on_task_toggle_button_pressed)
 	task_close_button.pressed.connect(_close_task_panel)
@@ -33,6 +39,11 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel"):
+		return
+
+	if input_settings_dialog != null and input_settings_dialog.has_method("is_dialog_open") and input_settings_dialog.is_dialog_open():
+		input_settings_dialog.close_dialog()
+		get_viewport().set_input_as_handled()
 		return
 
 	if settings_overlay.visible:
@@ -50,6 +61,8 @@ func _on_settings_button_pressed() -> void:
 
 
 func _on_settings_close_button_pressed() -> void:
+	if input_settings_dialog != null and input_settings_dialog.has_method("close_dialog"):
+		input_settings_dialog.close_dialog()
 	settings_overlay.visible = false
 
 
@@ -61,6 +74,11 @@ func _on_task_toggle_button_pressed() -> void:
 func _close_task_panel() -> void:
 	task_panel.visible = false
 	_refresh_task_button_text(task_system.get_task_chains())
+
+
+func _on_input_settings_button_pressed() -> void:
+	if input_settings_dialog != null and input_settings_dialog.has_method("open_dialog"):
+		input_settings_dialog.open_dialog()
 
 
 func _on_tasks_updated(task_chains: Array, total_gold: int) -> void:
@@ -105,9 +123,9 @@ func _refresh_task_button_text(task_chains: Array) -> void:
 			if status != "locked" and status != "completed":
 				pending_count += 1
 
-	var base_label := "收起任务" if task_panel.visible else "任务列表"
+	var base_label := "鏀惰捣浠诲姟" if task_panel.visible else "浠诲姟鍒楄〃"
 	if ready_count > 0:
-		task_toggle_button.text = "%s (%d 可提交)" % [base_label, ready_count]
+		task_toggle_button.text = "%s (%d 鍙彁浜?" % [base_label, ready_count]
 		return
 
 	if pending_count > 0:
