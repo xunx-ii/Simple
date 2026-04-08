@@ -249,11 +249,14 @@ func _build_detail_popup() -> void:
 
 	detail_description_scroll = ScrollContainer.new()
 	detail_description_scroll.custom_minimum_size = Vector2(0.0, 56.0)
+	detail_description_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_description_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_description_scroll.resized.connect(_update_detail_description_width)
 	detail_layout.add_child(detail_description_scroll)
 
 	detail_description_label = Label.new()
 	detail_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_description_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_description_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_apply_font(detail_description_label, 12)
 	detail_description_scroll.add_child(detail_description_label)
@@ -407,7 +410,9 @@ func _update_detail_popup() -> void:
 	detail_challenge_button.disabled = not bool(snapshot.get("unlocked", false))
 	detail_challenge_button.visible = true
 	detail_popup.size = DETAIL_POPUP_SIZE
+	_update_detail_description_width()
 	_update_detail_popup_position()
+	call_deferred("_update_detail_description_width")
 	call_deferred("_update_detail_popup_position")
 
 
@@ -428,6 +433,15 @@ func _update_detail_popup_position() -> void:
 
 	detail_popup.position = popup_position
 	detail_popup.size = DETAIL_POPUP_SIZE
+
+
+func _update_detail_description_width() -> void:
+	if detail_description_scroll == null or detail_description_label == null:
+		return
+
+	var available_width := maxf(detail_description_scroll.size.x, DETAIL_POPUP_SIZE.x - 24.0)
+	detail_description_label.custom_minimum_size.x = available_width
+	detail_description_label.size.x = available_width
 
 
 func _get_snapshot_by_id(level_id: String) -> Dictionary:
