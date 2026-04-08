@@ -52,81 +52,77 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 38
-theme_override_constants/margin_top = 22
-theme_override_constants/margin_right = 38
-theme_override_constants/margin_bottom = 22
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
-[node name="ContentCenter" type="CenterContainer" parent="SafeArea"]
+[node name="ContentPanel" type="PanelContainer" parent="SafeArea"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-
-[node name="ContentPanel" type="PanelContainer" parent="SafeArea/ContentCenter"]
-custom_minimum_size = Vector2(820, 320)
-layout_mode = 2
 theme_override_styles/panel = SubResource("1")
 
-[node name="ContentMargin" type="MarginContainer" parent="SafeArea/ContentCenter/ContentPanel"]
+[node name="ContentMargin" type="MarginContainer" parent="SafeArea/ContentPanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 28
 theme_override_constants/margin_top = 26
 theme_override_constants/margin_right = 28
 theme_override_constants/margin_bottom = 26
 
-[node name="Content" type="HBoxContainer" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin"]
+[node name="Content" type="HBoxContainer" parent="SafeArea/ContentPanel/ContentMargin"]
 layout_mode = 2
 theme_override_constants/separation = 28
 
-[node name="LeftColumn" type="VBoxContainer" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content"]
+[node name="LeftColumn" type="VBoxContainer" parent="SafeArea/ContentPanel/ContentMargin/Content"]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
-[node name="TitleLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn"]
+[node name="TitleLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/LeftColumn"]
 layout_mode = 2
 text = "Simple"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 36
 
-[node name="SubtitleLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn"]
+[node name="SubtitleLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/LeftColumn"]
 layout_mode = 2
 text = "主菜单"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 18
 
-[node name="LeftSpacer" type="Control" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn"]
+[node name="LeftSpacer" type="Control" parent="SafeArea/ContentPanel/ContentMargin/Content/LeftColumn"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StartButton" type="Button" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn"]
+[node name="StartButton" type="Button" parent="SafeArea/ContentPanel/ContentMargin/Content/LeftColumn"]
 custom_minimum_size = Vector2(240, 54)
 layout_mode = 2
 text = "开始游戏"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
 
-[node name="AboutButton" type="Button" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/LeftColumn"]
+[node name="AboutButton" type="Button" parent="SafeArea/ContentPanel/ContentMargin/Content/LeftColumn"]
 custom_minimum_size = Vector2(240, 48)
 layout_mode = 2
 text = "关于游戏"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 18
 
-[node name="RightColumn" type="VBoxContainer" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content"]
+[node name="RightColumn" type="VBoxContainer" parent="SafeArea/ContentPanel/ContentMargin/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
-[node name="NoticeTitleLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn"]
+[node name="NoticeTitleLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn"]
 layout_mode = 2
 text = "健康游戏提示"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
 
-[node name="NoticeLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn"]
+[node name="NoticeLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 autowrap_mode = 3
@@ -134,40 +130,40 @@ vertical_alignment = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
-[node name="AgreementCenter" type="CenterContainer" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn"]
+[node name="AgreementCenter" type="CenterContainer" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="AgreementRow" type="HBoxContainer" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter"]
+[node name="AgreementRow" type="HBoxContainer" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter"]
 layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 6
 
-[node name="AgreementCheckBox" type="CheckBox" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
+[node name="AgreementCheckBox" type="CheckBox" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
 custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
 text = ""
 
-[node name="AgreementPrefixLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
+[node name="AgreementPrefixLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
 layout_mode = 2
 text = "我已阅读并同意"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
-[node name="ServiceLinkButton" type="LinkButton" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
+[node name="ServiceLinkButton" type="LinkButton" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
 layout_mode = 2
 text = "服务协议"
 underline = 1
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
-[node name="AgreementConnectorLabel" type="Label" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
+[node name="AgreementConnectorLabel" type="Label" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
 layout_mode = 2
 text = "和"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 14
 
-[node name="PrivacyLinkButton" type="LinkButton" parent="SafeArea/ContentCenter/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
+[node name="PrivacyLinkButton" type="LinkButton" parent="SafeArea/ContentPanel/ContentMargin/Content/RightColumn/AgreementCenter/AgreementRow"]
 layout_mode = 2
 text = "隐私协议"
 underline = 1
