@@ -1,6 +1,7 @@
 extends Node2D
 
 const InputSetup = preload("res://scripts/systems/input_setup.gd")
+const LevelProgressStateScript = preload("res://scripts/systems/levels/level_progress_state.gd")
 const WaveDirectorScript = preload("res://scripts/systems/wave_director.gd")
 const CoverManagerScript = preload("res://scripts/systems/cover_manager.gd")
 const ShopServiceScript = preload("res://scripts/systems/shop_service.gd")
@@ -19,8 +20,10 @@ const TILE_SIZE := 16
 const MIN_SPAWN_DISTANCE := 112.0
 const SPAWN_VIEW_MARGIN := 48.0
 const NAVIGATION_MARGIN := 4.0
+const LOBBY_SCENE_PATH := "res://scenes/lobby.tscn"
 const COVER_COLOR := Color(0.494118, 0.529412, 0.568627, 1.0)
 const GAME_OVER_BANNER_TEXT := "\u6E38\u620F\u7ED3\u675F"
+const LEVEL_COMPLETED_BANNER_TEXT := "关卡通关"
 
 var cover_manager
 var wave_director
@@ -29,6 +32,8 @@ var enemy_spawn_service
 var navigation_rebuild_queued: bool = false
 var game_over: bool = false
 var is_shutting_down: bool = false
+var level_completed: bool = false
+var active_level: Dictionary = {}
 
 @onready var player = $Player
 @onready var covers: Node2D = $Covers
@@ -60,6 +65,7 @@ func _ready() -> void:
 	_setup_player()
 	_setup_merchant()
 	_setup_services()
+	active_level = LevelProgressStateScript.get_active_level_definition()
 
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 
@@ -285,6 +291,10 @@ func _on_wave_cleared() -> void:
 	if is_shutting_down or not is_inside_tree():
 		return
 
+	if _is_level_target_reached():
+		await _complete_level_and_return_to_lobby()
+		return
+
 	if not wave_director.begin_wave_clear(player, spawn_timer):
 		return
 
@@ -301,6 +311,40 @@ func _on_wave_cleared() -> void:
 		return
 
 	_start_next_wave()
+
+
+func _is_level_target_reached() -> bool:
+	if level_completed or active_level.is_empty() or wave_director == null:
+		return false
+
+	var required_wave_count := int(active_level.get("required_wave_count", 0))
+	if required_wave_count <= 0:
+		return false
+
+	return int(wave_director.get("current_wave")) >= required_wave_count
+
+
+func _complete_level_and_return_to_lobby() -> void:
+	if level_completed:
+		return
+
+	level_completed = true
+	spawn_timer.stop()
+	LevelProgressStateScript.complete_active_level()
+	_show_banner(LEVEL_COMPLETED_BANNER_TEXT, 1.8)
+	_update_ui()
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	await tree.create_timer(1.2, false).timeout
+
+	if is_shutting_down or not is_inside_tree():
+		return
+
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	tree.change_scene_to_file(LOBBY_SCENE_PATH)
 
 func _show_banner(text: String, duration: float = WaveDirectorScript.DEFAULT_BANNER_TIME) -> void:
 	wave_director.set_banner(text, duration)

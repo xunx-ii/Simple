@@ -4,6 +4,13 @@ extends RefCounted
 const CLOSE := "关闭"
 const SETTINGS := "设置"
 const INPUT_SETTINGS := "输入设置"
+const LEVEL_SELECT := "选择关卡"
+const LEVEL_SELECTION_TITLE := "关卡选择"
+const LEVEL_CHALLENGE_BUTTON := "挑战关卡"
+const LEVEL_STATUS_COMPLETED := "已通关"
+const LEVEL_STATUS_AVAILABLE := "可挑战"
+const LEVEL_STATUS_LOCKED := "需先通关前置关卡"
+const LEVEL_STATUS_BOSS := "BOSS关卡"
 
 const MAIN_MENU_SUBTITLE := "主菜单"
 const MAIN_MENU_START := "开始游戏"
