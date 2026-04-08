@@ -1,15 +1,16 @@
 class_name UIController
 extends CanvasLayer
 
-signal restart_requested
 signal quit_requested
+signal return_to_lobby_requested
 signal shop_purchase_requested(item_id: String)
 signal shop_sell_requested(item_id: String)
 signal shop_closed
 
 const DASH_READY_TEXT := "冲刺就绪"
-const ACTIVE_STATE_TEMPLATE := "Tab 背包  E 交易  Esc 菜单"
-const GAME_OVER_TEXT := "游戏结束"
+const ACTIVE_STATE_TEMPLATE := "Tab 背包  Esc 菜单"
+const GAME_OVER_TEXT := "作战失败"
+const GAME_OVER_HINT_TEXT := "任务进度与背包物资已丢失，正在返回大厅..."
 const DEFAULT_EMPTY_INVENTORY_TEXT := "空"
 const DEFAULT_EMPTY_INVENTORY_HINT := ""
 
@@ -17,6 +18,7 @@ var game_over: bool = false
 var player: Node2D = null
 var current_hud_state: Dictionary = {}
 var current_shop_state: Dictionary = {}
+var return_to_lobby_button: Button = null
 
 @onready var fog_overlay: ColorRect = $FogOverlay
 @onready var score_label: Label = $ScoreLabel
@@ -39,6 +41,8 @@ var current_shop_state: Dictionary = {}
 @onready var shop_stock_items_container: VBoxContainer = $ShopOverlay/ShopPanel/ShopLayout/ShopColumns/StockSection/StockScroll/StockItems
 @onready var shop_close_button: Button = $ShopOverlay/ShopPanel/ShopLayout/ShopCloseButton
 @onready var pause_overlay: Control = $PauseOverlay
+@onready var pause_panel: Panel = $PauseOverlay/PausePanel
+@onready var pause_buttons: VBoxContainer = $PauseOverlay/PausePanel/PauseButtons
 @onready var continue_button: Button = $PauseOverlay/PausePanel/PauseButtons/ContinueButton
 @onready var quit_button: Button = $PauseOverlay/PausePanel/PauseButtons/QuitButton
 @onready var damage_indicators: Node2D = $DamageIndicators
@@ -49,8 +53,7 @@ var current_shop_state: Dictionary = {}
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_configure_process_modes()
-	continue_button.text = "继续"
-	quit_button.text = "退出"
+	_setup_pause_menu_buttons()
 	continue_button.pressed.connect(_on_continue_button_pressed)
 	quit_button.pressed.connect(_on_quit_button_pressed)
 	shop_close_button.pressed.connect(_on_shop_close_button_pressed)
@@ -74,8 +77,6 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if game_over:
-		if Input.is_action_just_pressed("restart"):
-			restart_requested.emit()
 		return
 
 	if shop_overlay.visible:
@@ -237,6 +238,8 @@ func _configure_process_modes() -> void:
 	shop_stock_items_container.process_mode = Node.PROCESS_MODE_ALWAYS
 	pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	shop_close_button.process_mode = Node.PROCESS_MODE_ALWAYS
+	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
+	pause_buttons.process_mode = Node.PROCESS_MODE_ALWAYS
 	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
 
@@ -258,6 +261,11 @@ func _refresh_modal_state() -> void:
 
 func _on_continue_button_pressed() -> void:
 	set_pause_menu_visible(false)
+
+
+func _on_return_to_lobby_button_pressed() -> void:
+	set_pause_menu_visible(false)
+	return_to_lobby_requested.emit()
 
 
 func _on_quit_button_pressed() -> void:
@@ -433,3 +441,26 @@ func _refresh_mobile_controls_state() -> void:
 		and not shop_overlay.visible
 	)
 	mobile_controls.set_controls_enabled(should_enable)
+
+
+func _setup_pause_menu_buttons() -> void:
+	pause_panel.offset_left = -96.0
+	pause_panel.offset_top = -58.0
+	pause_panel.offset_right = 96.0
+	pause_panel.offset_bottom = 58.0
+	continue_button.text = "继续"
+	quit_button.text = "退出游戏"
+	restart_label.text = GAME_OVER_HINT_TEXT
+
+	if return_to_lobby_button == null:
+		return_to_lobby_button = Button.new()
+		return_to_lobby_button.name = "ReturnToLobbyButton"
+		return_to_lobby_button.custom_minimum_size = Vector2(0.0, 24.0)
+		return_to_lobby_button.flat = true
+		return_to_lobby_button.process_mode = Node.PROCESS_MODE_ALWAYS
+		pause_buttons.add_child(return_to_lobby_button)
+		pause_buttons.move_child(return_to_lobby_button, 1)
+		return_to_lobby_button.pressed.connect(_on_return_to_lobby_button_pressed)
+
+	return_to_lobby_button.text = "返回大厅"
+	_apply_text_style(return_to_lobby_button)

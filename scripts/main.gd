@@ -2,6 +2,7 @@ extends Node2D
 
 const InputSetup = preload("res://scripts/systems/input_setup.gd")
 const LevelProgressStateScript = preload("res://scripts/systems/levels/level_progress_state.gd")
+const MetaProgressionStateScript = preload("res://scripts/systems/meta_progression_state.gd")
 const WaveDirectorScript = preload("res://scripts/systems/wave_director.gd")
 const CoverManagerScript = preload("res://scripts/systems/cover_manager.gd")
 const ShopServiceScript = preload("res://scripts/systems/shop_service.gd")
@@ -22,8 +23,8 @@ const SPAWN_VIEW_MARGIN := 48.0
 const NAVIGATION_MARGIN := 4.0
 const LOBBY_SCENE_PATH := "res://scenes/lobby.tscn"
 const COVER_COLOR := Color(0.494118, 0.529412, 0.568627, 1.0)
-const GAME_OVER_BANNER_TEXT := "\u6E38\u620F\u7ED3\u675F"
-const LEVEL_COMPLETED_BANNER_TEXT := "关卡通关"
+const GAME_OVER_BANNER_TEXT := "作战失败"
+const LEVEL_COMPLETED_BANNER_TEXT := "成功撤离"
 
 var cover_manager
 var wave_director
@@ -39,7 +40,7 @@ var active_level: Dictionary = {}
 @onready var covers: Node2D = $Covers
 @onready var navigation_region: NavigationRegion2D = $NavigationRegion2D
 @onready var enemies: Node2D = $Enemies
-@onready var merchant_npc: Node2D = $MerchantNPC
+@onready var merchant_npc: Node2D = get_node_or_null("MerchantNPC")
 @onready var loot_drops: Node2D = $LootDrops
 @onready var bullets: Node2D = $Bullets
 @onready var hit_effects: Node2D = $HitEffects
@@ -126,8 +127,9 @@ func _draw() -> void:
 	draw_rect(WORLD_RECT, Color(0.58, 0.62, 0.68, 1.0), false, 3.0)
 
 func _setup_ui() -> void:
-	ui_controller.restart_requested.connect(_on_restart_requested)
 	ui_controller.quit_requested.connect(_on_quit_requested)
+	if ui_controller.has_signal("return_to_lobby_requested"):
+		ui_controller.return_to_lobby_requested.connect(_on_return_to_lobby_requested)
 	if ui_controller.has_signal("shop_purchase_requested"):
 		ui_controller.shop_purchase_requested.connect(_on_shop_purchase_requested)
 	if ui_controller.has_signal("shop_sell_requested"):
@@ -237,14 +239,28 @@ func _on_shop_closed() -> void:
 	_update_ui()
 
 func _on_player_defeated() -> void:
+	if game_over or level_completed:
+		return
+
 	ui_controller.close_pause_menu()
 	if ui_controller.has_method("close_shop_menu"):
 		ui_controller.close_shop_menu()
 
 	game_over = true
 	spawn_timer.stop()
+	_discard_run_progress()
 	_show_banner(GAME_OVER_BANNER_TEXT, 999.0)
 	_update_ui()
+	await _return_to_lobby_after_delay(1.2)
+
+
+func _on_return_to_lobby_requested() -> void:
+	if level_completed:
+		return
+
+	spawn_timer.stop()
+	_discard_run_progress()
+	_change_to_lobby_scene()
 
 func _on_enemy_defeated() -> void:
 	wave_director.register_enemy_defeated()
@@ -330,6 +346,7 @@ func _complete_level_and_return_to_lobby() -> void:
 
 	level_completed = true
 	spawn_timer.stop()
+	_store_battle_inventory_in_warehouse()
 	LevelProgressStateScript.complete_active_level()
 	_show_banner(LEVEL_COMPLETED_BANNER_TEXT, 1.8)
 	_update_ui()
@@ -343,17 +360,11 @@ func _complete_level_and_return_to_lobby() -> void:
 	if is_shutting_down or not is_inside_tree():
 		return
 
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	tree.change_scene_to_file(LOBBY_SCENE_PATH)
+	_change_to_lobby_scene()
 
 func _show_banner(text: String, duration: float = WaveDirectorScript.DEFAULT_BANNER_TIME) -> void:
 	wave_director.set_banner(text, duration)
 	_update_ui()
-
-func _on_restart_requested() -> void:
-	var tree := get_tree()
-	if tree != null:
-		tree.reload_current_scene()
 
 func _on_quit_requested() -> void:
 	is_shutting_down = true
@@ -375,7 +386,8 @@ func _configure_process_modes() -> void:
 	]
 
 	for node in pausable_nodes:
-		node.process_mode = Node.PROCESS_MODE_PAUSABLE
+		if node != null:
+			node.process_mode = Node.PROCESS_MODE_PAUSABLE
 
 func _update_enemy_visibility() -> void:
 	if not is_instance_valid(player):
@@ -459,3 +471,39 @@ func _is_point_walkable(point: Vector2) -> bool:
 
 func _clamp_point_to_world(point: Vector2) -> Vector2:
 	return cover_manager.clamp_point_to_world(point)
+
+
+func _discard_run_progress() -> void:
+	LevelProgressStateScript.clear_active_challenge()
+
+
+func _store_battle_inventory_in_warehouse() -> void:
+	if player == null or not player.has_method("get_inventory_snapshot"):
+		return
+
+	var inventory_snapshot: Dictionary = player.get_inventory_snapshot()
+	MetaProgressionStateScript.deposit_inventory_snapshot(inventory_snapshot)
+
+
+func _return_to_lobby_after_delay(delay_seconds: float) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	await tree.create_timer(delay_seconds, false).timeout
+
+	if is_shutting_down or not is_inside_tree() or level_completed:
+		return
+
+	_change_to_lobby_scene()
+
+
+func _change_to_lobby_scene() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	is_shutting_down = true
+	tree.paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	tree.change_scene_to_file(LOBBY_SCENE_PATH)

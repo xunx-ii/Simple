@@ -36,9 +36,6 @@ position = Vector2(640, 360)
 
 [node name="Enemies" type="Node2D" parent="."]
 
-[node name="MerchantNPC" parent="." instance=ExtResource("8")]
-position = Vector2(176, 176)
-
 [node name="LootDrops" type="Node2D" parent="."]
 
 [node name="Bullets" type="Node2D" parent="."]
