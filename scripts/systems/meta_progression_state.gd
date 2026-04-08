@@ -3,6 +3,7 @@ extends RefCounted
 
 const SAVE_PATH := "user://meta_progression.cfg"
 const InventoryManagerScript = preload("res://scripts/systems/inventory_manager.gd")
+const WeaponAssemblyStateScript = preload("res://scripts/systems/weapon_assembly_state.gd")
 
 const DEFAULT_PLAYER_NAME := "测试玩家"
 const DEFAULT_GOLD := 1200
@@ -35,6 +36,8 @@ static var _loaded := false
 static var _player_name := DEFAULT_PLAYER_NAME
 static var _gold := DEFAULT_GOLD
 static var _warehouse_inventory = null
+static var _equipped_weapon_attachments: Dictionary = {}
+static var _starter_attachments_granted := false
 
 
 static func get_player_name() -> String:
@@ -80,6 +83,68 @@ static func get_shop_entries() -> Array[Dictionary]:
 		)
 
 	return entries
+
+
+static func get_weapon_assembly_snapshot() -> Dictionary:
+	_ensure_loaded()
+	return WeaponAssemblyStateScript.build_snapshot(get_warehouse_snapshot(), _equipped_weapon_attachments)
+
+
+static func get_weapon_attachment_entries(slot_id: String) -> Array[Dictionary]:
+	_ensure_loaded()
+	return WeaponAssemblyStateScript.build_available_attachment_entries(
+		slot_id,
+		get_warehouse_snapshot(),
+		_equipped_weapon_attachments
+	)
+
+
+static func equip_weapon_attachment(slot_id: String, attachment_id: String) -> Dictionary:
+	_ensure_loaded()
+	if not WeaponAssemblyStateScript.get_slot_definition(slot_id).is_empty():
+		if attachment_id == "__unequip__":
+			return _unequip_weapon_attachment(slot_id)
+		if not WeaponAssemblyStateScript.is_attachment_valid_for_slot(slot_id, attachment_id):
+			return {
+				"success": false,
+				"reason": "INVALID_ATTACHMENT",
+				"slot_id": slot_id,
+				"attachment_id": attachment_id
+			}
+
+		var remove_result: Dictionary = _warehouse_inventory.remove_item(attachment_id, 1)
+		if not bool(remove_result.get("success", false)):
+			return {
+				"success": false,
+				"reason": "NOT_IN_WAREHOUSE",
+				"slot_id": slot_id,
+				"attachment_id": attachment_id
+			}
+
+		var previous_attachment_id := str(_equipped_weapon_attachments.get(slot_id, ""))
+		if not previous_attachment_id.is_empty():
+			var previous_item := WeaponAssemblyStateScript.build_attachment_item(previous_attachment_id)
+			if not previous_item.is_empty():
+				_warehouse_inventory.add_item(previous_item)
+
+		_equipped_weapon_attachments[slot_id] = attachment_id
+		_save_state()
+		return {
+			"success": true,
+			"reason": "EQUIPPED",
+			"slot_id": slot_id,
+			"attachment_id": attachment_id,
+			"display_name": str(
+				WeaponAssemblyStateScript.get_attachment_definition(attachment_id).get("display_name", "配件")
+			)
+		}
+
+	return {
+		"success": false,
+		"reason": "INVALID_SLOT",
+		"slot_id": slot_id,
+		"attachment_id": attachment_id
+	}
 
 
 static func buy_shop_item(item_id: String) -> Dictionary:
@@ -171,21 +236,32 @@ static func _ensure_loaded() -> void:
 	_loaded = true
 	_player_name = DEFAULT_PLAYER_NAME
 	_gold = DEFAULT_GOLD
+	_equipped_weapon_attachments.clear()
+	_starter_attachments_granted = false
 	_warehouse_inventory = InventoryManagerScript.new()
 	_warehouse_inventory.setup(WAREHOUSE_CAPACITY)
 
 	var config := ConfigFile.new()
-	if config.load(SAVE_PATH) != OK:
-		return
+	if config.load(SAVE_PATH) == OK:
+		_player_name = str(config.get_value("player", "name", DEFAULT_PLAYER_NAME))
+		_gold = maxi(int(config.get_value("player", "gold", DEFAULT_GOLD)), 0)
+		_equipped_weapon_attachments = WeaponAssemblyStateScript.sanitize_equipped_attachments(
+			config.get_value("weapon", "equipped_attachments", {})
+		)
+		_starter_attachments_granted = bool(config.get_value("weapon", "starter_attachments_granted", false))
 
-	_player_name = str(config.get_value("player", "name", DEFAULT_PLAYER_NAME))
-	_gold = maxi(int(config.get_value("player", "gold", DEFAULT_GOLD)), 0)
+		var warehouse_items_variant: Variant = config.get_value("warehouse", "items", [])
+		if warehouse_items_variant is Array:
+			for item_variant in warehouse_items_variant:
+				if item_variant is Dictionary:
+					_warehouse_inventory.add_item(item_variant)
 
-	var warehouse_items_variant: Variant = config.get_value("warehouse", "items", [])
-	if warehouse_items_variant is Array:
-		for item_variant in warehouse_items_variant:
-			if item_variant is Dictionary:
-				_warehouse_inventory.add_item(item_variant)
+	if not _starter_attachments_granted:
+		for starter_item in WeaponAssemblyStateScript.get_starter_attachment_items():
+			if starter_item is Dictionary and not starter_item.is_empty():
+				_warehouse_inventory.add_item(starter_item)
+		_starter_attachments_granted = true
+		_save_state()
 
 
 static func _save_state() -> void:
@@ -196,6 +272,8 @@ static func _save_state() -> void:
 	config.set_value("player", "name", _player_name)
 	config.set_value("player", "gold", _gold)
 	config.set_value("warehouse", "items", _warehouse_inventory.build_item_entries())
+	config.set_value("weapon", "equipped_attachments", _equipped_weapon_attachments)
+	config.set_value("weapon", "starter_attachments_granted", _starter_attachments_granted)
 	config.save(SAVE_PATH)
 
 
@@ -210,3 +288,29 @@ static func _get_shop_offer(item_id: String) -> Dictionary:
 			return offer.duplicate(true)
 
 	return {}
+
+
+static func _unequip_weapon_attachment(slot_id: String) -> Dictionary:
+	var current_attachment_id := str(_equipped_weapon_attachments.get(slot_id, ""))
+	if current_attachment_id.is_empty():
+		return {
+			"success": false,
+			"reason": "NOT_EQUIPPED",
+			"slot_id": slot_id
+		}
+
+	var current_item := WeaponAssemblyStateScript.build_attachment_item(current_attachment_id)
+	if not current_item.is_empty():
+		_warehouse_inventory.add_item(current_item)
+
+	_equipped_weapon_attachments.erase(slot_id)
+	_save_state()
+	return {
+		"success": true,
+		"reason": "UNEQUIPPED",
+		"slot_id": slot_id,
+		"attachment_id": current_attachment_id,
+		"display_name": str(
+			WeaponAssemblyStateScript.get_attachment_definition(current_attachment_id).get("display_name", "配件")
+		)
+	}

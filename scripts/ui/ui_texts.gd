@@ -40,6 +40,13 @@ const SHOP_EMPTY := "当前没有可购买的商品。"
 const SHOP_NOT_ENOUGH_GOLD := "金币不足，无法购买该物资。"
 const SHOP_WAREHOUSE_FULL := "仓库已满，请先清理库存。"
 const SHOP_OUT_OF_STOCK := "该商品暂时不可购买。"
+const WEAPON_ASSEMBLY_TITLE := "武器配件装配"
+const WEAPON_ASSEMBLY_SUBTITLE := "点击配件区域后，可从仓库里选择对应部位的可用配件。"
+const WEAPON_STATS_TITLE := "武器属性"
+const WEAPON_ATTACHMENT_LIST_TITLE := "仓库可用配件"
+const WEAPON_ATTACHMENT_LIST_HINT := "选中上方配件区域后，这里会显示可装配的仓库配件列表。"
+const WEAPON_ATTACHMENT_EMPTY := "仓库里没有适配当前部位的可用配件。"
+const WEAPON_ATTACHMENT_EQUIP_FAILED := "当前无法完成该配件装配。"
 const INPUT_SETTINGS_PREVIEW_TITLE := "战斗缩影"
 const INPUT_SETTINGS_JOYSTICK_SECTION := "虚拟摇杆"
 const INPUT_SETTINGS_AIM_BUTTON_SECTION := "瞄准按钮"
@@ -86,3 +93,11 @@ static func shop_summary_text(gold: int) -> String:
 
 static func shop_purchase_text(item_name: String, price: int) -> String:
 	return "已购买 %s，花费 %d 金币。" % [item_name, price]
+
+
+static func weapon_attachment_changed_text(slot_name: String, attachment_name: String) -> String:
+	return "%s 已装配：%s" % [slot_name, attachment_name]
+
+
+static func weapon_attachment_removed_text(slot_name: String, attachment_name: String) -> String:
+	return "%s 已卸下：%s" % [slot_name, attachment_name]

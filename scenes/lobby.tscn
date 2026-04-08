@@ -142,20 +142,36 @@ text = "设置"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 
-[node name="Spacer" type="Control" parent="SafeArea/MainLayout"]
+[node name="MiddleRow" type="HBoxContainer" parent="SafeArea/MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="SideRail" type="VBoxContainer" parent="SafeArea/MainLayout/MiddleRow"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RailSpacer" type="Control" parent="SafeArea/MainLayout/MiddleRow/SideRail"]
 custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BottomBar" type="HBoxContainer" parent="SafeArea/MainLayout"]
+[node name="BottomBar" type="HBoxContainer" parent="SafeArea/MainLayout/MiddleRow/SideRail"]
 layout_mode = 2
 
-[node name="TaskToggleButton" type="Button" parent="SafeArea/MainLayout/BottomBar"]
+[node name="TaskToggleButton" type="Button" parent="SafeArea/MainLayout/MiddleRow/SideRail/BottomBar"]
 custom_minimum_size = Vector2(170, 44)
 layout_mode = 2
 text = "任务列表"
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
+
+[node name="WeaponAssemblyHost" type="Control" parent="SafeArea/MainLayout/MiddleRow"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="TaskPanel" type="PanelContainer" parent="."]
 visible = false

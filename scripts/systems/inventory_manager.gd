@@ -128,6 +128,42 @@ func sell_item(item_id: String, quantity: int = 1) -> Dictionary:
 		"remaining_quantity": remaining_quantity
 	}
 
+func remove_item(item_id: String, quantity: int = 1) -> Dictionary:
+	var normalized_id := item_id.strip_edges()
+	if normalized_id.is_empty() or not items.has(normalized_id):
+		return {
+			"success": false,
+			"reason": "NOT_FOUND",
+			"item_id": normalized_id,
+			"quantity_removed": 0
+		}
+
+	var item: Dictionary = items.get(normalized_id, {})
+	var available_quantity: int = int(item.get("quantity", 0))
+	var quantity_to_remove: int = mini(maxi(quantity, 1), available_quantity)
+	var remaining_quantity: int = maxi(available_quantity - quantity_to_remove, 0)
+
+	if remaining_quantity > 0:
+		item["quantity"] = remaining_quantity
+		items[normalized_id] = item
+	else:
+		items.erase(normalized_id)
+
+	return {
+		"success": true,
+		"reason": "REMOVED",
+		"item_id": normalized_id,
+		"display_name": str(item.get("display_name", normalized_id)),
+		"quantity_removed": quantity_to_remove,
+		"remaining_quantity": remaining_quantity,
+		"item_data": {
+			"id": normalized_id,
+			"display_name": str(item.get("display_name", normalized_id)),
+			"quantity": quantity_to_remove,
+			"sell_value": int(item.get("sell_value", 0))
+		}
+	}
+
 func sell_all_items() -> Dictionary:
 	var items_sold := 0
 	var gold_earned := 0

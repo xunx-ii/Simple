@@ -6,6 +6,7 @@ const TaskPanelRendererScript = preload("res://scripts/ui/task_panel_renderer.gd
 const InputSettingsDialogScript = preload("res://scripts/ui/input_settings_dialog.gd")
 const LevelSelectionDialogScript = preload("res://scripts/ui/level_selection_dialog.gd")
 const ItemListDialogScript = preload("res://scripts/ui/item_list_dialog.gd")
+const WeaponAssemblyPanelScript = preload("res://scripts/ui/weapon_assembly_panel.gd")
 const MetaProgressionStateScript = preload("res://scripts/systems/meta_progression_state.gd")
 const LevelProgressStateScript = preload("res://scripts/systems/levels/level_progress_state.gd")
 const UITextsScript = preload("res://scripts/ui/ui_texts.gd")
@@ -18,6 +19,7 @@ var input_settings_dialog: Control
 var level_selection_dialog: Control
 var warehouse_dialog: Control
 var shop_dialog: Control
+var weapon_assembly_panel: Control
 var level_select_button: Button
 var warehouse_button: Button
 var shop_button: Button
@@ -27,8 +29,9 @@ var last_shop_status_text := ""
 @onready var player_name_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/PlayerSection/PlayerColumn/PlayerValueLabel
 @onready var gold_title_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldTitleLabel
 @onready var gold_label: Label = $SafeArea/MainLayout/TopPanel/TopMargin/TopBar/GoldSection/GoldColumn/GoldValueLabel
-@onready var bottom_bar: HBoxContainer = $SafeArea/MainLayout/BottomBar
-@onready var task_toggle_button: Button = $SafeArea/MainLayout/BottomBar/TaskToggleButton
+@onready var bottom_bar: HBoxContainer = $SafeArea/MainLayout/MiddleRow/SideRail/BottomBar
+@onready var task_toggle_button: Button = $SafeArea/MainLayout/MiddleRow/SideRail/BottomBar/TaskToggleButton
+@onready var weapon_assembly_host: Control = $SafeArea/MainLayout/MiddleRow/WeaponAssemblyHost
 @onready var task_panel: PanelContainer = $TaskPanel
 @onready var task_title_label: Label = $TaskPanel/TaskMargin/TaskContent/TaskHeader/TaskTitle
 @onready var task_items_container: VBoxContainer = $TaskPanel/TaskMargin/TaskContent/TaskScroll/TaskItems
@@ -64,6 +67,11 @@ func _ready() -> void:
 	add_child(shop_dialog)
 	if shop_dialog.has_signal("item_action_requested"):
 		shop_dialog.item_action_requested.connect(_on_item_dialog_action_requested)
+
+	weapon_assembly_panel = WeaponAssemblyPanelScript.new()
+	if weapon_assembly_panel.has_signal("assembly_changed"):
+		weapon_assembly_panel.assembly_changed.connect(_on_weapon_assembly_changed)
+	weapon_assembly_host.add_child(weapon_assembly_panel)
 
 	_setup_bottom_buttons()
 
@@ -232,6 +240,10 @@ func _on_item_dialog_action_requested(dialog_id: String, item_id: String) -> voi
 	_refresh_lobby_state()
 
 
+func _on_weapon_assembly_changed(_status_text: String) -> void:
+	_refresh_lobby_state()
+
+
 func _refresh_lobby_state() -> void:
 	_apply_task_state(
 		task_system.get_player_name(),
@@ -247,6 +259,9 @@ func _refresh_item_dialog_states() -> void:
 
 	if _is_dialog_open(shop_dialog):
 		shop_dialog.set_dialog_state(_build_shop_dialog_state())
+
+	if weapon_assembly_panel != null and weapon_assembly_panel.has_method("refresh_panel"):
+		weapon_assembly_panel.refresh_panel()
 
 
 func _build_warehouse_dialog_state() -> Dictionary:
