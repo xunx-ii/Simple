@@ -85,53 +85,47 @@ func _build_ui() -> void:
 	add_child(dialog_panel)
 
 	var margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(margin, 18, 18, 18, 18)
+	UIThemeHelperScript.set_margin(margin, 14, 14, 14, 14)
 	dialog_panel.add_child(margin)
 
 	var root_layout := VBoxContainer.new()
 	root_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root_layout.add_theme_constant_override("separation", 14)
+	root_layout.add_theme_constant_override("separation", 10)
 	margin.add_child(root_layout)
 
 	var title_row := HBoxContainer.new()
-	title_row.add_theme_constant_override("separation", 10)
+	title_row.add_theme_constant_override("separation", 8)
 	root_layout.add_child(title_row)
 
 	var title_label := Label.new()
 	title_label.text = UITextsScript.INPUT_SETTINGS
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_dialog_font(title_label, 22)
+	_apply_dialog_font(title_label, 20)
 	title_row.add_child(title_label)
 
 	var close_button := Button.new()
 	close_button.text = UITextsScript.CLOSE
-	close_button.custom_minimum_size = Vector2(82.0, 36.0)
+	close_button.custom_minimum_size = Vector2(76.0, 34.0)
 	close_button.pressed.connect(close_dialog)
-	_apply_dialog_font(close_button, 14)
+	_apply_dialog_font(close_button, 13)
 	title_row.add_child(close_button)
-
-	var subtitle_label := Label.new()
-	subtitle_label.text = UITextsScript.INPUT_SETTINGS_SUBTITLE
-	subtitle_label.modulate = Color(0.8, 0.88, 0.94, 0.84)
-	_apply_dialog_font(subtitle_label, 13)
-	root_layout.add_child(subtitle_label)
 
 	var content_row := HBoxContainer.new()
 	content_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_row.add_theme_constant_override("separation", 18)
+	content_row.add_theme_constant_override("separation", 14)
 	root_layout.add_child(content_row)
 
 	var preview_column := VBoxContainer.new()
 	preview_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview_column.add_theme_constant_override("separation", 10)
+	preview_column.add_theme_constant_override("separation", 8)
 	content_row.add_child(preview_column)
 
 	var preview_title := Label.new()
 	preview_title.text = UITextsScript.INPUT_SETTINGS_PREVIEW_TITLE
-	_apply_dialog_font(preview_title, 16)
+	_apply_dialog_font(preview_title, 15)
 	preview_column.add_child(preview_title)
 
 	var preview_frame := PanelContainer.new()
@@ -146,7 +140,7 @@ func _build_ui() -> void:
 	var preview_margin := MarginContainer.new()
 	preview_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	UIThemeHelperScript.set_margin(preview_margin, 10, 10, 10, 10)
+	UIThemeHelperScript.set_margin(preview_margin, 8, 8, 8, 8)
 	preview_frame.add_child(preview_margin)
 
 	var aspect := AspectRatioContainer.new()
@@ -157,7 +151,7 @@ func _build_ui() -> void:
 
 	preview_root = Control.new()
 	preview_root.clip_contents = true
-	preview_root.custom_minimum_size = Vector2(440.0, 203.0)
+	preview_root.custom_minimum_size = Vector2(320.0, 148.0)
 	preview_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_root.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	aspect.add_child(preview_root)
@@ -166,7 +160,8 @@ func _build_ui() -> void:
 	_build_preview_scene(preview_root)
 
 	var controls_panel := PanelContainer.new()
-	controls_panel.custom_minimum_size = Vector2(284.0, 0.0)
+	controls_panel.custom_minimum_size = Vector2(252.0, 0.0)
+	controls_panel.size_flags_horizontal = Control.SIZE_FILL
 	controls_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	controls_panel.add_theme_stylebox_override(
 		"panel",
@@ -175,14 +170,19 @@ func _build_ui() -> void:
 	content_row.add_child(controls_panel)
 
 	var controls_margin := MarginContainer.new()
-	UIThemeHelperScript.set_margin(controls_margin, 14, 14, 14, 14)
+	UIThemeHelperScript.set_margin(controls_margin, 12, 12, 12, 12)
 	controls_panel.add_child(controls_margin)
+
+	var controls_scroll := ScrollContainer.new()
+	controls_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	controls_margin.add_child(controls_scroll)
 
 	var controls_layout := VBoxContainer.new()
 	controls_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	controls_layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	controls_layout.add_theme_constant_override("separation", 12)
-	controls_margin.add_child(controls_layout)
+	controls_layout.add_theme_constant_override("separation", 10)
+	controls_scroll.add_child(controls_layout)
 
 	controls_layout.add_child(_build_section_title(UITextsScript.INPUT_SETTINGS_JOYSTICK_SECTION))
 	controls_layout.add_child(_create_slider_row("joystick", "margin_left", UITextsScript.INPUT_SETTINGS_LEFT_MARGIN, 8.0, 280.0, 1.0))
@@ -194,15 +194,8 @@ func _build_ui() -> void:
 	controls_layout.add_child(_create_slider_row("aim_button", "margin_bottom", UITextsScript.INPUT_SETTINGS_BOTTOM_MARGIN, 8.0, 180.0, 1.0))
 	controls_layout.add_child(_create_slider_row("aim_button", "size", UITextsScript.INPUT_SETTINGS_SIZE, 88.0, 220.0, 1.0))
 
-	var hint_label := Label.new()
-	hint_label.text = UITextsScript.INPUT_SETTINGS_HINT
-	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint_label.modulate = Color(0.76, 0.84, 0.9, 0.72)
-	_apply_dialog_font(hint_label, 12)
-	controls_layout.add_child(hint_label)
-
 	var footer_row := HBoxContainer.new()
-	footer_row.add_theme_constant_override("separation", 10)
+	footer_row.add_theme_constant_override("separation", 8)
 	root_layout.add_child(footer_row)
 
 	var footer_spacer := Control.new()
@@ -211,16 +204,16 @@ func _build_ui() -> void:
 
 	var reset_button := Button.new()
 	reset_button.text = UITextsScript.RESET_DEFAULT
-	reset_button.custom_minimum_size = Vector2(108.0, 38.0)
+	reset_button.custom_minimum_size = Vector2(96.0, 34.0)
 	reset_button.pressed.connect(_on_reset_button_pressed)
-	_apply_dialog_font(reset_button, 14)
+	_apply_dialog_font(reset_button, 13)
 	footer_row.add_child(reset_button)
 
 	var done_button := Button.new()
 	done_button.text = UITextsScript.DONE
-	done_button.custom_minimum_size = Vector2(92.0, 38.0)
+	done_button.custom_minimum_size = Vector2(84.0, 34.0)
 	done_button.pressed.connect(close_dialog)
-	_apply_dialog_font(done_button, 14)
+	_apply_dialog_font(done_button, 13)
 	footer_row.add_child(done_button)
 
 	_update_dialog_geometry()
@@ -354,7 +347,7 @@ func _create_slider_row(
 
 	var label := Label.new()
 	label.text = label_text
-	_apply_dialog_font(label, 13)
+	_apply_dialog_font(label, 12)
 	row.add_child(label)
 
 	var controls_row := HBoxContainer.new()
@@ -372,7 +365,7 @@ func _create_slider_row(
 	var value_label := Label.new()
 	value_label.custom_minimum_size = Vector2(48.0, 0.0)
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_apply_dialog_font(value_label, 12)
+	_apply_dialog_font(value_label, 11)
 	controls_row.add_child(value_label)
 
 	var slider_id := "%s.%s" % [section_name, key_name]
@@ -385,7 +378,7 @@ func _build_section_title(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.modulate = Color(0.89, 0.96, 1.0, 1.0)
-	_apply_dialog_font(label, 16)
+	_apply_dialog_font(label, 15)
 	return label
 
 
@@ -443,8 +436,8 @@ func _update_dialog_geometry() -> void:
 		return
 
 	var viewport_size := get_viewport_rect().size
-	var width := minf(viewport_size.x * 0.86, 780.0)
-	var height := minf(viewport_size.y * 0.86, 360.0)
+	var width := minf(viewport_size.x - 24.0, 860.0)
+	var height := minf(viewport_size.y - 24.0, 390.0)
 	dialog_panel.offset_left = -width * 0.5
 	dialog_panel.offset_top = -height * 0.5
 	dialog_panel.offset_right = width * 0.5
