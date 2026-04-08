@@ -31,7 +31,10 @@ func _process(_delta: float) -> void:
         return
 
     visible = player.visible
-    global_position = get_viewport().get_mouse_position()
+    if player.has_method("get_crosshair_screen_position"):
+        global_position = player.get_crosshair_screen_position()
+    else:
+        global_position = get_viewport().get_mouse_position()
 
     var outer_scale := DEFAULT_OUTER_SCALE
     if player.has_method("get_crosshair_outer_scale"):

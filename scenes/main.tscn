@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/actors/player.tscn" id="2"]
@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://scripts/ui/damage_indicator.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/ui/ui_controller.gd" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/actors/merchant_npc.tscn" id="8"]
+[ext_resource type="Script" path="res://scripts/ui/mobile_controls.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/ui/virtual_joystick.gd" id="10"]
 
 [sub_resource type="StyleBoxFlat" id="1"]
 bg_color = Color(0.0862745, 0.0980392, 0.117647, 0.92)
@@ -305,6 +307,45 @@ offset_bottom = -8.0
 horizontal_alignment = 1
 text = ""
 vertical_alignment = 1
+theme_override_fonts/font = ExtResource("3")
+theme_override_font_sizes/font_size = 12
+
+[node name="MobileControls" type="Control" parent="CanvasLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("9")
+
+[node name="LeftJoystick" type="Control" parent="CanvasLayer/MobileControls"]
+custom_minimum_size = Vector2(172, 172)
+layout_mode = 1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = -190.0
+offset_right = 190.0
+offset_bottom = -18.0
+grow_vertical = 0
+script = ExtResource("10")
+
+[node name="AimButton" type="Button" parent="CanvasLayer/MobileControls"]
+custom_minimum_size = Vector2(132, 48)
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -78.0
+offset_right = -18.0
+offset_bottom = -30.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "进入瞄准"
 theme_override_fonts/font = ExtResource("3")
 theme_override_font_sizes/font_size = 12
 

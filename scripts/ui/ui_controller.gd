@@ -43,6 +43,8 @@ var current_shop_state: Dictionary = {}
 @onready var quit_button: Button = $PauseOverlay/PausePanel/PauseButtons/QuitButton
 @onready var damage_indicators: Node2D = $DamageIndicators
 @onready var crosshair: Node2D = $Crosshair
+@onready var mobile_controls = $MobileControls
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -52,6 +54,14 @@ func _ready() -> void:
 	continue_button.pressed.connect(_on_continue_button_pressed)
 	quit_button.pressed.connect(_on_quit_button_pressed)
 	shop_close_button.pressed.connect(_on_shop_close_button_pressed)
+
+	if mobile_controls.has_signal("move_vector_changed"):
+		mobile_controls.move_vector_changed.connect(_on_mobile_move_vector_changed)
+	if mobile_controls.has_signal("shoot_requested"):
+		mobile_controls.shoot_requested.connect(_on_mobile_shoot_requested)
+	if mobile_controls.has_signal("aim_mode_toggled"):
+		mobile_controls.aim_mode_toggled.connect(_on_mobile_aim_mode_toggled)
+
 	set_pause_menu_visible(false)
 	set_inventory_visible(false)
 	_set_shop_menu_visible_state(false)
@@ -59,6 +69,8 @@ func _ready() -> void:
 	_rebuild_inventory_list(inventory_items_container, [])
 	_rebuild_shop_bag_list([])
 	_rebuild_shop_stock_list([])
+	_refresh_mobile_controls_state()
+
 
 func _process(_delta: float) -> void:
 	if game_over:
@@ -82,6 +94,7 @@ func _process(_delta: float) -> void:
 
 		set_pause_menu_visible(not pause_overlay.visible)
 
+
 func setup(player_node: Node2D) -> void:
 	player = player_node
 
@@ -93,6 +106,9 @@ func setup(player_node: Node2D) -> void:
 
 	if crosshair != null and crosshair.has_method("setup"):
 		crosshair.setup(player)
+
+	_refresh_mobile_controls_state()
+
 
 func apply_hud(state: Dictionary) -> void:
 	var normalized_state := {
@@ -143,14 +159,18 @@ func apply_hud(state: Dictionary) -> void:
 		set_inventory_visible(false)
 		interaction_label.visible = false
 		state_label.text = GAME_OVER_TEXT
+		_refresh_mobile_controls_state()
 		return
 
 	state_label.text = ACTIVE_STATE_TEMPLATE
+	_refresh_mobile_controls_state()
+
 
 func open_shop(shop_state: Dictionary) -> void:
 	set_inventory_visible(false)
 	apply_shop_state(shop_state)
 	_set_shop_menu_visible_state(true)
+
 
 func apply_shop_state(shop_state: Dictionary) -> void:
 	current_shop_state = {
@@ -167,8 +187,10 @@ func apply_shop_state(shop_state: Dictionary) -> void:
 	_rebuild_shop_bag_list(inventory_items)
 	_rebuild_shop_stock_list(stock_items)
 
+
 func is_shop_open() -> bool:
 	return shop_overlay.visible
+
 
 func close_shop_menu() -> void:
 	if not shop_overlay.visible:
@@ -177,6 +199,7 @@ func close_shop_menu() -> void:
 	_set_shop_menu_visible_state(false)
 	current_shop_state.clear()
 	shop_closed.emit()
+
 
 func set_pause_menu_visible(menu_open: bool) -> void:
 	if menu_open:
@@ -188,20 +211,25 @@ func set_pause_menu_visible(menu_open: bool) -> void:
 	_refresh_modal_state()
 	_refresh_interaction_prompt()
 
+
 func set_inventory_visible(menu_open: bool) -> void:
 	if menu_open and shop_overlay.visible:
 		close_shop_menu()
 
 	inventory_overlay.visible = menu_open
 	_refresh_interaction_prompt()
+	_refresh_mobile_controls_state()
+
 
 func close_pause_menu() -> void:
 	set_pause_menu_visible(false)
+
 
 func _configure_process_modes() -> void:
 	fog_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	damage_indicators.process_mode = Node.PROCESS_MODE_ALWAYS
 	crosshair.process_mode = Node.PROCESS_MODE_ALWAYS
+	mobile_controls.process_mode = Node.PROCESS_MODE_ALWAYS
 	inventory_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	inventory_items_container.process_mode = Node.PROCESS_MODE_ALWAYS
 	shop_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -212,10 +240,12 @@ func _configure_process_modes() -> void:
 	continue_button.process_mode = Node.PROCESS_MODE_ALWAYS
 	quit_button.process_mode = Node.PROCESS_MODE_ALWAYS
 
+
 func _set_shop_menu_visible_state(menu_open: bool) -> void:
 	shop_overlay.visible = menu_open
 	_refresh_modal_state()
 	_refresh_interaction_prompt()
+
 
 func _refresh_modal_state() -> void:
 	var modal_open: bool = pause_overlay.visible or shop_overlay.visible
@@ -223,21 +253,28 @@ func _refresh_modal_state() -> void:
 	var tree := get_tree()
 	if tree != null:
 		tree.paused = modal_open
+	_refresh_mobile_controls_state()
+
 
 func _on_continue_button_pressed() -> void:
 	set_pause_menu_visible(false)
 
+
 func _on_quit_button_pressed() -> void:
 	quit_requested.emit()
+
 
 func _on_shop_buy_button_pressed(item_id: String) -> void:
 	shop_purchase_requested.emit(item_id)
 
+
 func _on_shop_sell_button_pressed(item_id: String) -> void:
 	shop_sell_requested.emit(item_id)
 
+
 func _on_shop_close_button_pressed() -> void:
 	close_shop_menu()
+
 
 func _sanitize_entry_list(entries_variant: Variant) -> Array[Dictionary]:
 	var entries: Array[Dictionary] = []
@@ -249,6 +286,7 @@ func _sanitize_entry_list(entries_variant: Variant) -> Array[Dictionary]:
 
 	return entries
 
+
 func _rebuild_inventory_list(container: VBoxContainer, items: Array) -> void:
 	_clear_container(container)
 	if items.is_empty():
@@ -257,10 +295,8 @@ func _rebuild_inventory_list(container: VBoxContainer, items: Array) -> void:
 
 	for item in items:
 		var quantity: int = int(item.get("quantity", 0))
-		_add_list_row(
-			container,
-			"%s  x%d" % [item.get("display_name", "物品"), quantity]
-		)
+		_add_list_row(container, "%s  x%d" % [item.get("display_name", "物品"), quantity])
+
 
 func _rebuild_shop_bag_list(items: Array) -> void:
 	_clear_container(shop_bag_items_container)
@@ -281,6 +317,7 @@ func _rebuild_shop_bag_list(items: Array) -> void:
 			not item_id.is_empty() and quantity > 0
 		)
 
+
 func _rebuild_shop_stock_list(items: Array) -> void:
 	_clear_container(shop_stock_items_container)
 	if items.is_empty():
@@ -300,10 +337,12 @@ func _rebuild_shop_stock_list(items: Array) -> void:
 			str(item.get("description", ""))
 		)
 
+
 func _clear_container(container: VBoxContainer) -> void:
 	for child in container.get_children():
 		container.remove_child(child)
 		child.queue_free()
+
 
 func _add_empty_list_label(container: VBoxContainer, message: String, detail: String) -> void:
 	var label := Label.new()
@@ -311,6 +350,7 @@ func _add_empty_list_label(container: VBoxContainer, message: String, detail: St
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_text_style(label)
 	container.add_child(label)
+
 
 func _add_list_row(
 	container: VBoxContainer,
@@ -347,11 +387,13 @@ func _add_list_row(
 		button.pressed.connect(callback.bind(item_id))
 	row.add_child(button)
 
+
 func _apply_text_style(control: Control, font_size: int = 12) -> void:
 	var ui_font: Font = score_label.get_theme_font("font")
 	if ui_font != null:
 		control.add_theme_font_override("font", ui_font)
 	control.add_theme_font_size_override("font_size", font_size)
+
 
 func _refresh_interaction_prompt() -> void:
 	var interaction_text: String = str(current_hud_state.get("interaction_text", ""))
@@ -363,3 +405,31 @@ func _refresh_interaction_prompt() -> void:
 		and not shop_overlay.visible
 		and not pause_overlay.visible
 	)
+
+
+func _on_mobile_move_vector_changed(move_vector: Vector2) -> void:
+	if player != null and player.has_method("set_mobile_move_vector"):
+		player.set_mobile_move_vector(move_vector)
+
+
+func _on_mobile_shoot_requested(screen_position: Vector2) -> void:
+	if player != null and player.has_method("request_mobile_shot"):
+		player.request_mobile_shot(screen_position)
+
+
+func _on_mobile_aim_mode_toggled(is_enabled: bool) -> void:
+	if player != null and player.has_method("set_mobile_aim_enabled"):
+		player.set_mobile_aim_enabled(is_enabled)
+
+
+func _refresh_mobile_controls_state() -> void:
+	if mobile_controls == null or not mobile_controls.has_method("set_controls_enabled"):
+		return
+
+	var should_enable := (
+		not game_over
+		and not pause_overlay.visible
+		and not inventory_overlay.visible
+		and not shop_overlay.visible
+	)
+	mobile_controls.set_controls_enabled(should_enable)

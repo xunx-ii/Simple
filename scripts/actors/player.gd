@@ -44,6 +44,11 @@ var current_weapon
 var inventory_manager
 var sprite_kick_offset: Vector2 = Vector2.ZERO
 var camera_shake_strength: float = 0.0
+var mobile_move_vector: Vector2 = Vector2.ZERO
+var mobile_shoot_requested: bool = false
+var mobile_aim_mode_enabled: bool = false
+var mobile_has_aim_target: bool = false
+var mobile_aim_target_global: Vector2 = Vector2.ZERO
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var camera: Camera2D = $Camera2D
@@ -72,11 +77,13 @@ func _physics_process(delta: float) -> void:
     dash_time_remaining = max(dash_time_remaining - delta, 0.0)
     dash_cooldown_remaining = max(dash_cooldown_remaining - delta, 0.0)
 
-    var input_vector := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-    var shoot_pressed: bool = Input.is_action_pressed("shoot")
-    is_aiming = Input.is_action_pressed("aim") and not is_dead
+    var keyboard_input_vector := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+    var input_vector := mobile_move_vector if mobile_move_vector.length_squared() > 0.0 else keyboard_input_vector
+    var shoot_pressed: bool = Input.is_action_pressed("shoot") or mobile_shoot_requested
+    is_aiming = (Input.is_action_pressed("aim") or mobile_aim_mode_enabled) and not is_dead
     _update_aim_direction()
     _update_weapon(delta, shoot_pressed)
+    mobile_shoot_requested = false
 
     if Input.is_action_just_pressed("dash") and dash_cooldown_remaining <= 0.0:
         _start_dash(input_vector)
@@ -124,12 +131,37 @@ func take_hit(source_position: Vector2, damage: int = 1) -> void:
         defeated.emit()
 
 func _update_aim_direction() -> void:
-    var mouse_direction := get_global_mouse_position() - global_position
+    var aim_target := mobile_aim_target_global if mobile_has_aim_target else get_global_mouse_position()
+    var mouse_direction := aim_target - global_position
 
     if mouse_direction.length_squared() > 1.0:
         aim_direction = mouse_direction.normalized()
     elif velocity.length_squared() > 0.01:
         aim_direction = velocity.normalized()
+
+func set_mobile_move_vector(input_vector: Vector2) -> void:
+    mobile_move_vector = input_vector.limit_length(1.0)
+
+func set_mobile_aim_enabled(is_enabled: bool) -> void:
+    mobile_aim_mode_enabled = is_enabled
+
+func request_mobile_shot(screen_position: Vector2) -> void:
+    mobile_aim_target_global = _screen_to_world(screen_position)
+    mobile_has_aim_target = true
+    mobile_shoot_requested = true
+
+func get_crosshair_screen_position() -> Vector2:
+    if mobile_has_aim_target:
+        return get_canvas_transform() * mobile_aim_target_global
+
+    if mobile_aim_mode_enabled:
+        return get_viewport_rect().size * 0.5
+
+    var viewport := get_viewport()
+    if viewport == null:
+        return Vector2.ZERO
+
+    return viewport.get_mouse_position()
 
 func _clamp_to_arena() -> void:
     global_position = global_position.clamp(
@@ -339,11 +371,8 @@ func _update_weapon(delta: float, shoot_pressed: bool) -> void:
     if not shoot_pressed:
         return
 
-    var fire_result: Dictionary = current_weapon.try_fire(
-        global_position,
-        aim_direction,
-        get_global_mouse_position()
-    )
+    var target_position := mobile_aim_target_global if mobile_has_aim_target else get_global_mouse_position()
+    var fire_result: Dictionary = current_weapon.try_fire(global_position, aim_direction, target_position)
     if fire_result.is_empty():
         return
 
@@ -396,3 +425,6 @@ func _update_camera_view() -> void:
     camera.limit_bottom = int(arena_rect.end.y)
     camera.offset = Vector2.ZERO
     camera.reset_smoothing()
+
+func _screen_to_world(screen_position: Vector2) -> Vector2:
+    return get_canvas_transform().affine_inverse() * screen_position
